@@ -25,19 +25,24 @@ class IntegrationRehauNeaSmart2ApiClientAuthenticationError(
 
 
 class IntegrationRehauNeaSmart2ApiClient:
-    """API Client"""
+    """API Client."""
 
     def __init__(
-        self,
-        url: str,
-        session: aiohttp.ClientSession,
-    ) -> None:
-        """API Client"""
-        self._url = url
-        self._session = session
+                self,
+                url: str,
+                session: aiohttp.ClientSession,
+            ) -> None:
+                """Initialize the API client.
+
+                Args:
+                    url (str): The URL of the API.
+                    session (aiohttp.ClientSession): The aiohttp client session to use for making requests.
+                """
+                self._url = url
+                self._session = session
 
     async def async_get_health(self) -> bool:
-        """Check health"""
+        """Check health."""
         health = await self._api_wrapper(method="get", url=self._url + "/health")
         if health["status"] == "ok":
             return True
@@ -51,7 +56,7 @@ class IntegrationRehauNeaSmart2ApiClient:
     async def async_get_rooms_detailed(self) -> any:
         """Get rooms from the API."""
         return await self._api_wrapper(method="get", url=self._url + "/rooms/detailed")
-    
+
     async def async_get_rooms(self) -> any:
         """Get data from the API."""
         return await self._api_wrapper(method="get", url=self._url + "/rooms")
@@ -63,7 +68,7 @@ class IntegrationRehauNeaSmart2ApiClient:
         )
 
     async def async_set_room(self, room: dict) -> any:
-        """Set room"""
+        """Set room."""
         return await self._api_wrapper(
             method="put",
             url=self._url + "/room/" + str(room["id"]),
@@ -71,7 +76,7 @@ class IntegrationRehauNeaSmart2ApiClient:
         )
 
     async def async_set_operation_mode(self, mode: str) -> any:
-        """Set operation mode"""
+        """Set operation mode."""
         return await self._api_wrapper(
             method="put",
             url=self._url + "/operation_mode",
@@ -79,7 +84,7 @@ class IntegrationRehauNeaSmart2ApiClient:
         )
 
     async def async_set_energy_level(self, level: str) -> any:
-        """Set energy level"""
+        """Set energy level."""
         return await self._api_wrapper(
             method="put",
             url=self._url + "/energy_level",

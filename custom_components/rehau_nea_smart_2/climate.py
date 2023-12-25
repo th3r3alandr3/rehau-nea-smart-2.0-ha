@@ -1,9 +1,8 @@
+"""Platform for climate integration."""
 import logging
-
 from custom_components.rehau_nea_smart_2.coordinator import (
     RehauNeaSmart2DataUpdateCoordinator,
 )
-from .entity import IntegrationRehauNeaSmart2Entity
 from .const import (
     DOMAIN,
     NAME,
@@ -55,10 +54,13 @@ async def async_setup_entry(hass, entry, async_add_devices):
 
 
 class IntegrationRehauNeaSmart2Climate(ClimateEntity, RestoreEntity):
+    """Representation of a Rehau Nea Smart 2 climate entity."""
+
     _attr_has_entity_name = False
     _attr_temperature_unit = UnitOfTemperature.CELSIUS
 
     def __init__(self, coordinator: RehauNeaSmart2DataUpdateCoordinator, room):
+        """Initialize the Rehau Nea Smart 2 climate entity."""
         self._coordinator = coordinator
         self._state = None
         self._available = True
@@ -93,6 +95,7 @@ class IntegrationRehauNeaSmart2Climate(ClimateEntity, RestoreEntity):
 
     @property
     def device_info(self):
+        """Return device information for the climate entity."""
         return DeviceInfo(
             identifiers={(DOMAIN, self._coordinator.id)},
             name=self._coordinator.name,
@@ -102,16 +105,20 @@ class IntegrationRehauNeaSmart2Climate(ClimateEntity, RestoreEntity):
 
     @property
     def available(self) -> bool:
+        """Return True if the climate entity is available."""
         return True
 
 
 class RehauNeaSmart2RoomClimate(IntegrationRehauNeaSmart2Climate):
+    """Representation of a Rehau Nea Smart 2 room climate entity."""
+
     def __init__(
         self,
         coordinator: RehauNeaSmart2DataUpdateCoordinator,
         room,
         entity_description: ClimateEntityDescription,
     ):
+        """Initialize the Rehau Nea Smart 2 room climate entity."""
         super().__init__(coordinator, room)
         self._attr_unique_id = f"{self._id}_thermostat"
         self._attr_name = f"{self._room_name} Thermostat"
@@ -129,10 +136,10 @@ class RehauNeaSmart2RoomClimate(IntegrationRehauNeaSmart2Climate):
         self._attr_min_temp = self._min_temp
 
     async def async_update(self) -> None:
+        """Update the state of the climate entity."""
         room = await self._coordinator.get_room(self._id)
         settings = await self._coordinator.async_get_settings()
         room.update(settings)
-        print("async_update room", room)
         if (
             room is not None
             and room["mode"] is not None
@@ -150,6 +157,7 @@ class RehauNeaSmart2RoomClimate(IntegrationRehauNeaSmart2Climate):
             _LOGGER.error(f"Error updating {self._attr_unique_id} thermostat")
 
     async def async_set_preset_mode(self, preset_mode: str):
+        """Set the preset mode of the climate entity."""
         if preset_mode == "Normal" and self._operation == "heating":
             temperature = self._heating_normal
         elif preset_mode == "Reduced" and self._operation == "heating":
@@ -160,11 +168,6 @@ class RehauNeaSmart2RoomClimate(IntegrationRehauNeaSmart2Climate):
             temperature = self._cooling_reduced
         else:
             temperature = self._attr_target_temperature
-
-        print(temperature)
-        print(preset_mode)
-        print(self._operation)
-        print(self._heating_reduced)
 
         mode = PRESET_STATES_MAPPING[preset_mode]
         room = {
@@ -177,11 +180,11 @@ class RehauNeaSmart2RoomClimate(IntegrationRehauNeaSmart2Climate):
             _LOGGER.error(f"Error setting mode for {self._attr_unique_id} thermostat")
 
     async def async_set_temperature(self, **kwargs):
+        """Set the target temperature of the climate entity."""
         temperature = kwargs.get(ATTR_TEMPERATURE)
         if temperature is None:
             return
         mode = PRESET_STATES_MAPPING[self._attr_preset_mode]
-        # self._attr_target_temperature = temperature
         room = {"id": self._id, "mode": mode, "target_temp": temperature}
         response = await self._coordinator.async_set_room(room)
         if not response:
@@ -199,8 +202,8 @@ class RehauNeaSmart2RoomClimate(IntegrationRehauNeaSmart2Climate):
                 self._cooling_reduced = temperature
 
     async def async_set_hvac_mode(self, hvac_mode: str):
+        """Set the HVAC mode of the climate entity."""
         operation_mode = PRESET_CLIMATE_MODES_MAPPING_REVERSE[hvac_mode]
-        print(operation_mode)
         self._attr_hvac_mode = hvac_mode
         response = await self._coordinator.async_set_operation_mode(operation_mode)
         if not response:

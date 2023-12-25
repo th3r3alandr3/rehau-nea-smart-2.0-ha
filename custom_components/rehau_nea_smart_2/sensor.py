@@ -1,4 +1,5 @@
 """Sensor platform for rehau_nea_smart_2."""
+
 from __future__ import annotations
 import logging
 
@@ -36,7 +37,9 @@ async def async_setup_entry(hass, entry, async_add_devices):
 
     for entity_description in ENTITY_DESCRIPTIONS:
         for room in rooms:
-            devices.append(RehauNeasmart2TemperatureSensor(coordinator, room, entity_description))
+            devices.append(
+                RehauNeasmart2TemperatureSensor(coordinator, room, entity_description)
+            )
 
     async_add_devices(devices)
 
@@ -60,17 +63,21 @@ class IntegrationRehauNeaSmart2Sensor(IntegrationRehauNeaSmart2Entity, SensorEnt
 
 
 class RehauNeasmartGenericSensor(SensorEntity, RestoreEntity):
+    """Generic sensor class for Rehau Neasmart."""
+
     _attr_has_entity_name = False
 
     def __init__(self, device, room):
+        """Initialize the generic sensor class."""
         self._device = device
         self._available = True
-        self._zone = room['id']
-        self._name = room['room_name']
-        self._state = room['current_temp']
+        self._zone = room["id"]
+        self._name = room["room_name"]
+        self._state = room["current_temp"]
 
     @property
     def device_info(self):
+        """Return device information for the sensor."""
         return DeviceInfo(
             identifiers={(DOMAIN, self._device.id)},
             name=self._device.name,
@@ -80,26 +87,36 @@ class RehauNeasmartGenericSensor(SensorEntity, RestoreEntity):
 
     @property
     def available(self) -> bool:
+        """Return True if the sensor is available, False otherwise."""
         return self._available
 
     @property
     def native_value(self) -> float | None:
+        """Return the native value of the sensor."""
         return self._state
 
 
 class RehauNeasmart2TemperatureSensor(RehauNeasmartGenericSensor):
+    """Temperature sensor class for Rehau Neasmart 2."""
+
     device_class = TEMPERATURE
     _attr_native_unit_of_measurement = UnitOfTemperature.CELSIUS
 
-    def __init__(self, device, room, entity_description: SensorEntityDescription,):
+    def __init__(
+        self,
+        device,
+        room,
+        entity_description: SensorEntityDescription,
+    ):
+        """Initialize the temperature sensor class."""
         super().__init__(device, room)
         self._attr_unique_id = f"{self._zone}_temperature"
         self._attr_name = f"{self._name} Temperature"
         self.entity_description = entity_description
 
     async def async_update(self) -> None:
+        """Update the temperature sensor."""
         temperature = await self._device.get_temperature(self._zone)
-        print(f"Updating {self._zone}_temperature to {temperature}")
         if temperature is not None:
             self._state = temperature
         else:
