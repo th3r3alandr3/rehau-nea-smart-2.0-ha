@@ -1,4 +1,4 @@
-"""DataUpdateCoordinator for integration_blueprint."""
+"""DataUpdateCoordinator for rehau_nea_smart_2."""
 from __future__ import annotations
 
 from datetime import timedelta
@@ -109,6 +109,22 @@ class RehauNeaSmart2DataUpdateCoordinator(DataUpdateCoordinator):
         try:
             print(room)
             return await self.client.async_set_room(room)
+        except IntegrationRehauNeaSmart2ApiClientAuthenticationError as exception:
+            raise ConfigEntryAuthFailed(exception) from exception
+        except IntegrationRehauNeaSmart2ApiClientError as exception:
+            raise UpdateFailed(exception) from exception
+        
+    async def async_set_operation_mode(self, mode: str) -> any:
+        try:
+            return await self.client.async_set_operation_mode(mode)
+        except IntegrationRehauNeaSmart2ApiClientAuthenticationError as exception:
+            raise ConfigEntryAuthFailed(exception) from exception
+        except IntegrationRehauNeaSmart2ApiClientError as exception:
+            raise UpdateFailed(exception) from exception
+        
+    async def async_set_energy_level(self, level: str) -> any:
+        try:
+            return await self.client.async_set_energy_level(level)
         except IntegrationRehauNeaSmart2ApiClientAuthenticationError as exception:
             raise ConfigEntryAuthFailed(exception) from exception
         except IntegrationRehauNeaSmart2ApiClientError as exception:

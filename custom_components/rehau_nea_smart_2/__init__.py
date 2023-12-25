@@ -1,7 +1,7 @@
-"""Custom integration to integrate integration_blueprint with Home Assistant.
+"""Custom integration to integrate rehau_nea_smart_2 with Home Assistant.
 
 For more details about this integration, please refer to
-https://github.com/ludeeus/integration_blueprint
+https://github.com/ludeeus/rehau_nea_smart_2
 """
 from __future__ import annotations
 
@@ -17,6 +17,7 @@ from .coordinator import RehauNeaSmart2DataUpdateCoordinator
 PLATFORMS: list[Platform] = [
     Platform.CLIMATE,
     Platform.SENSOR,
+    Platform.SELECT,
 ]
 
 

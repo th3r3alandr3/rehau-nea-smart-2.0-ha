@@ -1,4 +1,4 @@
-"""Sensor platform for integration_blueprint."""
+"""Sensor platform for rehau_nea_smart_2."""
 from __future__ import annotations
 import logging
 
@@ -19,7 +19,7 @@ _LOGGER = logging.getLogger(__name__)
 
 ENTITY_DESCRIPTIONS = (
     SensorEntityDescription(
-        key="integration_blueprint",
+        key="rehau_nea_smart_2",
         name="Integration Sensor",
         icon="mdi:thermometer",
     ),
@@ -42,7 +42,7 @@ async def async_setup_entry(hass, entry, async_add_devices):
 
 
 class IntegrationRehauNeaSmart2Sensor(IntegrationRehauNeaSmart2Entity, SensorEntity):
-    """integration_blueprint Sensor class."""
+    """rehau_nea_smart_2 Sensor class."""
 
     def __init__(
         self,
@@ -99,6 +99,7 @@ class RehauNeasmart2TemperatureSensor(RehauNeasmartGenericSensor):
 
     async def async_update(self) -> None:
         temperature = await self._device.get_temperature(self._zone)
+        print(f"Updating {self._zone}_temperature to {temperature}")
         if temperature is not None:
             self._state = temperature
         else:

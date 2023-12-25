@@ -75,7 +75,7 @@ class IntegrationRehauNeaSmart2ApiClient:
         return await self._api_wrapper(
             method="put",
             url=self._url + "/operation_mode",
-            data=mode,
+            data={"operation_mode": mode},
         )
 
     async def async_set_energy_level(self, level: str) -> any:
@@ -83,7 +83,7 @@ class IntegrationRehauNeaSmart2ApiClient:
         return await self._api_wrapper(
             method="put",
             url=self._url + "/energy_level",
-            data=level,
+            data={"energy_level": level},
         )
 
     async def _api_wrapper(

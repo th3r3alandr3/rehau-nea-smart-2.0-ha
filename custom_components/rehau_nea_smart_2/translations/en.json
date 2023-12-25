@@ -1,5 +1,6 @@
 {
     "config": {
+        "flow_title": "Rehau Nea Smart 2",
         "step": {
             "user": {
                 "description": "Enter the API URL",
@@ -26,6 +27,26 @@
                             "Party": "Party"
                         }
                     }
+                }
+            }
+        },
+        "select": {
+            "climate_mode": {
+                "state": {
+                    "Heating": "Heating",
+                    "Cooling": "Cooling",
+                    "Heating and Cooling": "Auto",
+                    "Manual Heating": "Manual Heating",
+                    "Manual Cooling": "Manual Cooling"
+                }
+            },
+            "energy_level": {
+                "state": {
+                    "Normal": "Normal",
+                    "Reduced": "Reduced",
+                    "Standby": "Standby",
+                    "Auto": "Auto",
+                    "Vacation": "Vacation"
                 }
             }
         }
