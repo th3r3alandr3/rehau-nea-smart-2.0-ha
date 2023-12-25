@@ -8,8 +8,8 @@ from homeassistant.components.binary_sensor import (
 )
 
 from .const import DOMAIN
-from .coordinator import BlueprintDataUpdateCoordinator
-from .entity import IntegrationBlueprintEntity
+from .coordinator import RehauNeaSmart2DataUpdateCoordinator
+from .entity import IntegrationRehauNeaSmart2Entity
 
 ENTITY_DESCRIPTIONS = (
     BinarySensorEntityDescription(
@@ -32,12 +32,12 @@ async def async_setup_entry(hass, entry, async_add_devices):
     )
 
 
-class IntegrationBlueprintBinarySensor(IntegrationBlueprintEntity, BinarySensorEntity):
+class IntegrationBlueprintBinarySensor(IntegrationRehauNeaSmart2Entity, BinarySensorEntity):
     """integration_blueprint binary_sensor class."""
 
     def __init__(
         self,
-        coordinator: BlueprintDataUpdateCoordinator,
+        coordinator: RehauNeaSmart2DataUpdateCoordinator,
         entity_description: BinarySensorEntityDescription,
     ) -> None:
         """Initialize the binary_sensor class."""

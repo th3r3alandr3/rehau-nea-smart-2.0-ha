@@ -4,8 +4,8 @@ from __future__ import annotations
 from homeassistant.components.switch import SwitchEntity, SwitchEntityDescription
 
 from .const import DOMAIN
-from .coordinator import BlueprintDataUpdateCoordinator
-from .entity import IntegrationBlueprintEntity
+from .coordinator import RehauNeaSmart2DataUpdateCoordinator
+from .entity import IntegrationRehauNeaSmart2Entity
 
 ENTITY_DESCRIPTIONS = (
     SwitchEntityDescription(
@@ -28,12 +28,12 @@ async def async_setup_entry(hass, entry, async_add_devices):
     )
 
 
-class IntegrationBlueprintSwitch(IntegrationBlueprintEntity, SwitchEntity):
+class IntegrationBlueprintSwitch(IntegrationRehauNeaSmart2Entity, SwitchEntity):
     """integration_blueprint switch class."""
 
     def __init__(
         self,
-        coordinator: BlueprintDataUpdateCoordinator,
+        coordinator: RehauNeaSmart2DataUpdateCoordinator,
         entity_description: SwitchEntityDescription,
     ) -> None:
         """Initialize the switch class."""

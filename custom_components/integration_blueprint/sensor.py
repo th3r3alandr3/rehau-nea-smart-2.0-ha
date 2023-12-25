@@ -1,17 +1,27 @@
 """Sensor platform for integration_blueprint."""
 from __future__ import annotations
+import logging
 
 from homeassistant.components.sensor import SensorEntity, SensorEntityDescription
+from homeassistant.helpers.restore_state import RestoreEntity
+from homeassistant.helpers.entity import DeviceInfo
+
+from homeassistant.const import (
+    TEMPERATURE,
+    UnitOfTemperature,
+)
 
 from .const import DOMAIN
-from .coordinator import BlueprintDataUpdateCoordinator
-from .entity import IntegrationBlueprintEntity
+from .coordinator import RehauNeaSmart2DataUpdateCoordinator
+from .entity import IntegrationRehauNeaSmart2Entity
+
+_LOGGER = logging.getLogger(__name__)
 
 ENTITY_DESCRIPTIONS = (
     SensorEntityDescription(
         key="integration_blueprint",
         name="Integration Sensor",
-        icon="mdi:format-quote-close",
+        icon="mdi:thermometer",
     ),
 )
 
@@ -19,21 +29,24 @@ ENTITY_DESCRIPTIONS = (
 async def async_setup_entry(hass, entry, async_add_devices):
     """Set up the sensor platform."""
     coordinator = hass.data[DOMAIN][entry.entry_id]
-    async_add_devices(
-        IntegrationBlueprintSensor(
-            coordinator=coordinator,
-            entity_description=entity_description,
-        )
-        for entity_description in ENTITY_DESCRIPTIONS
-    )
+
+    rooms = await coordinator._async_update_data()
+
+    devices = []
+
+    for entity_description in ENTITY_DESCRIPTIONS:
+        for room in rooms:
+            devices.append(RehauNeasmart2TemperatureSensor(coordinator, room, entity_description))
+
+    async_add_devices(devices)
 
 
-class IntegrationBlueprintSensor(IntegrationBlueprintEntity, SensorEntity):
+class IntegrationRehauNeaSmart2Sensor(IntegrationRehauNeaSmart2Entity, SensorEntity):
     """integration_blueprint Sensor class."""
 
     def __init__(
         self,
-        coordinator: BlueprintDataUpdateCoordinator,
+        coordinator: RehauNeaSmart2DataUpdateCoordinator,
         entity_description: SensorEntityDescription,
     ) -> None:
         """Initialize the sensor class."""
@@ -43,4 +56,50 @@ class IntegrationBlueprintSensor(IntegrationBlueprintEntity, SensorEntity):
     @property
     def native_value(self) -> str:
         """Return the native value of the sensor."""
-        return self.coordinator.data.get("body")
+        return "15"
+
+
+class RehauNeasmartGenericSensor(SensorEntity, RestoreEntity):
+    _attr_has_entity_name = False
+
+    def __init__(self, device, room):
+        self._device = device
+        self._available = True
+        self._zone = room['id']
+        self._name = room['room_name']
+        self._state = room['current_temp']
+
+    @property
+    def device_info(self):
+        return DeviceInfo(
+            identifiers={(DOMAIN, self._device.id)},
+            name=self._device.name,
+            manufacturer=self._device.manufacturer,
+            model=self._device.model,
+        )
+
+    @property
+    def available(self) -> bool:
+        return self._available
+
+    @property
+    def native_value(self) -> float | None:
+        return self._state
+
+
+class RehauNeasmart2TemperatureSensor(RehauNeasmartGenericSensor):
+    device_class = TEMPERATURE
+    _attr_native_unit_of_measurement = UnitOfTemperature.CELSIUS
+
+    def __init__(self, device, room, entity_description: SensorEntityDescription,):
+        super().__init__(device, room)
+        self._attr_unique_id = f"{self._zone}_temperature"
+        self._attr_name = f"{self._name} Temperature"
+        self.entity_description = entity_description
+
+    async def async_update(self) -> None:
+        temperature = await self._device.get_temperature(self._zone)
+        if temperature is not None:
+            self._state = temperature
+        else:
+            _LOGGER.error(f"Error updating {self._zone}_temperature")

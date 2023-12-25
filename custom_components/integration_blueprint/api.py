@@ -8,49 +8,82 @@ import aiohttp
 import async_timeout
 
 
-class IntegrationBlueprintApiClientError(Exception):
+class IntegrationRehauNeaSmart2ApiClientError(Exception):
     """Exception to indicate a general API error."""
 
 
-class IntegrationBlueprintApiClientCommunicationError(
-    IntegrationBlueprintApiClientError
+class IntegrationRehauNeaSmart2ApiClientCommunicationError(
+    IntegrationRehauNeaSmart2ApiClientError
 ):
     """Exception to indicate a communication error."""
 
 
-class IntegrationBlueprintApiClientAuthenticationError(
-    IntegrationBlueprintApiClientError
+class IntegrationRehauNeaSmart2ApiClientAuthenticationError(
+    IntegrationRehauNeaSmart2ApiClientError
 ):
     """Exception to indicate an authentication error."""
 
 
-class IntegrationBlueprintApiClient:
-    """Sample API Client."""
+class IntegrationRehauNeaSmart2ApiClient:
+    """API Client"""
 
     def __init__(
         self,
-        username: str,
-        password: str,
+        url: str,
         session: aiohttp.ClientSession,
     ) -> None:
-        """Sample API Client."""
-        self._username = username
-        self._password = password
+        """API Client"""
+        self._url = url
         self._session = session
 
-    async def async_get_data(self) -> any:
+    async def async_get_health(self) -> bool:
+        """Check health"""
+        health = await self._api_wrapper(method="get", url=self._url + "/health")
+        if health["status"] == "ok":
+            return True
+        else:
+            return False
+
+    async def async_get_settings(self) -> dict:
+        """Get settings from the API."""
+        return await self._api_wrapper(method="get", url=self._url + "/settings")
+
+    async def async_get_rooms_detailed(self) -> any:
+        """Get rooms from the API."""
+        return await self._api_wrapper(method="get", url=self._url + "/rooms/detailed")
+    
+    async def async_get_rooms(self) -> any:
         """Get data from the API."""
+        return await self._api_wrapper(method="get", url=self._url + "/rooms")
+
+    async def async_get_room(self, zone) -> any:
+        """Get room from the API."""
         return await self._api_wrapper(
-            method="get", url="https://jsonplaceholder.typicode.com/posts/1"
+            method="get", url=self._url + "/room/" + str(zone)
         )
 
-    async def async_set_title(self, value: str) -> any:
-        """Get data from the API."""
+    async def async_set_room(self, room: dict) -> any:
+        """Set room"""
         return await self._api_wrapper(
-            method="patch",
-            url="https://jsonplaceholder.typicode.com/posts/1",
-            data={"title": value},
-            headers={"Content-type": "application/json; charset=UTF-8"},
+            method="put",
+            url=self._url + "/room/" + str(room["id"]),
+            data={"temp": room["target_temp"], "mode": room["mode"]},
+        )
+
+    async def async_set_operation_mode(self, mode: str) -> any:
+        """Set operation mode"""
+        return await self._api_wrapper(
+            method="put",
+            url=self._url + "/operation_mode",
+            data=mode,
+        )
+
+    async def async_set_energy_level(self, level: str) -> any:
+        """Set energy level"""
+        return await self._api_wrapper(
+            method="put",
+            url=self._url + "/energy_level",
+            data=level,
         )
 
     async def _api_wrapper(
@@ -70,21 +103,21 @@ class IntegrationBlueprintApiClient:
                     json=data,
                 )
                 if response.status in (401, 403):
-                    raise IntegrationBlueprintApiClientAuthenticationError(
+                    raise IntegrationRehauNeaSmart2ApiClientAuthenticationError(
                         "Invalid credentials",
                     )
                 response.raise_for_status()
                 return await response.json()
 
         except asyncio.TimeoutError as exception:
-            raise IntegrationBlueprintApiClientCommunicationError(
+            raise IntegrationRehauNeaSmart2ApiClientCommunicationError(
                 "Timeout error fetching information",
             ) from exception
         except (aiohttp.ClientError, socket.gaierror) as exception:
-            raise IntegrationBlueprintApiClientCommunicationError(
+            raise IntegrationRehauNeaSmart2ApiClientCommunicationError(
                 "Error fetching information",
             ) from exception
         except Exception as exception:  # pylint: disable=broad-except
-            raise IntegrationBlueprintApiClientError(
+            raise IntegrationRehauNeaSmart2ApiClientError(
                 "Something really wrong happened!"
             ) from exception

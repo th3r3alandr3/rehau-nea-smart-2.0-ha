@@ -2,16 +2,16 @@
     "config": {
         "step": {
             "user": {
-                "description": "Enter the API URL",
+                "description": "Geben Sie die API-URL ein",
                 "data": {
                     "url": "URL"
                 }
             }
         },
         "error": {
-            "auth": "Username/Password is wrong.",
-            "connection": "Unable to connect to the server.",
-            "unknown": "Unknown error occurred."
+            "auth": "Benutzername/Passwort ist falsch.",
+            "connection": "Verbindung zum Server konnte nicht hergestellt werden.",
+            "unknown": "Unbekannter Fehler ist aufgetreten."
         }
     },
     "entity": {
@@ -21,7 +21,7 @@
                     "preset_mode": {
                         "state": {
                             "Normal": "Normal",
-                            "Reduced": "Reduced",
+                            "Reduced": "Reduziert",
                             "Standby": "Standby",
                             "Party": "Party"
                         }
