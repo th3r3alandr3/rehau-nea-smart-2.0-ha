@@ -12,11 +12,17 @@ from homeassistant.helpers.update_coordinator import (
 )
 from homeassistant.exceptions import ConfigEntryAuthFailed
 
+from .mqtt.types.installation import Installation, Zone
+
 from .api import (
     IntegrationRehauNeaSmart2ApiClient,
     IntegrationRehauNeaSmart2ApiClientAuthenticationError,
     IntegrationRehauNeaSmart2ApiClientError,
 )
+
+from .mqtt.Controller import Controller
+
+
 from .const import DOMAIN, LOGGER
 
 
@@ -34,7 +40,7 @@ class RehauNeaSmart2DataUpdateCoordinator(DataUpdateCoordinator):
         self,
         hass: HomeAssistant,
         sysname: str,
-        client: IntegrationRehauNeaSmart2ApiClient,
+        controller: Controller,
     ) -> None:
         """Initialize the RehauNeaSmart2DataUpdateCoordinator.
 
@@ -43,7 +49,7 @@ class RehauNeaSmart2DataUpdateCoordinator(DataUpdateCoordinator):
             sysname (str): The system name.
             client (IntegrationRehauNeaSmart2ApiClient): The API client.
         """
-        self.client = client
+        self.controller = controller
         self.name = f"{sysname} Climate Control System"
         self.model = "Neasmart 2.0 Base Station"
         self.manufacturer = "Rehau"
@@ -63,30 +69,13 @@ class RehauNeaSmart2DataUpdateCoordinator(DataUpdateCoordinator):
             bool: True if the API is healthy, False otherwise.
         """
         try:
-            return await self.client.async_get_health()
+            return await self.controller.is_authenticated()
         except IntegrationRehauNeaSmart2ApiClientAuthenticationError:
             return False
         except IntegrationRehauNeaSmart2ApiClientError:
             return False
 
-    async def async_get_settings(self) -> dict:
-        """Get settings from the API.
-
-        Returns:
-            dict: The settings retrieved from the API.
-
-        Raises:
-            ConfigEntryAuthFailed: If authentication with the API fails.
-            UpdateFailed: If there is an error retrieving the settings.
-        """
-        try:
-            return await self.client.async_get_settings()
-        except IntegrationRehauNeaSmart2ApiClientAuthenticationError as exception:
-            raise ConfigEntryAuthFailed(exception) from exception
-        except IntegrationRehauNeaSmart2ApiClientError as exception:
-            raise UpdateFailed(exception) from exception
-
-    async def _async_update_data(self) -> list:
+    async def _async_update_data(self) -> list[Installation]:
         """Update data via library.
 
         Returns:
@@ -97,67 +86,31 @@ class RehauNeaSmart2DataUpdateCoordinator(DataUpdateCoordinator):
             UpdateFailed: If there is an error updating the data.
         """
         try:
-            return await self.client.async_get_rooms()
+            return self.controller.get_installations()
         except IntegrationRehauNeaSmart2ApiClientAuthenticationError as exception:
             raise ConfigEntryAuthFailed(exception) from exception
         except IntegrationRehauNeaSmart2ApiClientError as exception:
             raise UpdateFailed(exception) from exception
 
-    async def async_get_rooms_detailed(self) -> list:
-        """Get detailed information about the rooms from the Rehau Nea Smart 2 API.
+    def get_zone(self, zone) -> Zone:
+        """Get zones from the API.
 
         Returns:
-            list: A list of detailed room information.
+            dict: The zones retrieved from the API.
 
         Raises:
             ConfigEntryAuthFailed: If authentication with the API fails.
-            UpdateFailed: If there is an error retrieving the room information.
+            UpdateFailed: If there is an error retrieving the zones.
         """
         try:
-            return await self.client.async_get_rooms_detailed()
+            return self.controller.get_zone(zone)
         except IntegrationRehauNeaSmart2ApiClientAuthenticationError as exception:
             raise ConfigEntryAuthFailed(exception) from exception
         except IntegrationRehauNeaSmart2ApiClientError as exception:
             raise UpdateFailed(exception) from exception
 
-    async def async_get_rooms(self) -> list:
-        """Get rooms from the API.
 
-        Returns:
-            list: The rooms retrieved from the API.
-
-        Raises:
-            ConfigEntryAuthFailed: If authentication with the API fails.
-            UpdateFailed: If there is an error retrieving the rooms.
-        """
-        try:
-            return await self.client.async_get_rooms()
-        except IntegrationRehauNeaSmart2ApiClientAuthenticationError as exception:
-            raise ConfigEntryAuthFailed(exception) from exception
-        except IntegrationRehauNeaSmart2ApiClientError as exception:
-            raise UpdateFailed(exception) from exception
-
-    async def get_room(self, zone) -> float | None:
-        """Get the room temperature.
-
-        Args:
-            zone: The zone of the room.
-
-        Returns:
-            float | None: The current temperature of the room, or None if not available.
-
-        Raises:
-            ConfigEntryAuthFailed: If authentication with the API fails.
-            UpdateFailed: If there is an error retrieving the room temperature.
-        """
-        try:
-            return await self.client.async_get_room(zone)
-        except IntegrationRehauNeaSmart2ApiClientAuthenticationError as exception:
-            raise ConfigEntryAuthFailed(exception) from exception
-        except IntegrationRehauNeaSmart2ApiClientError as exception:
-            raise UpdateFailed(exception) from exception
-
-    async def get_temperature(self, zone) -> float | None:
+    def get_temperature(self, zone) -> float | None:
         """Get the current temperature of a room.
 
         Args:
@@ -171,34 +124,56 @@ class RehauNeaSmart2DataUpdateCoordinator(DataUpdateCoordinator):
             UpdateFailed: If there is an error retrieving the room temperature.
         """
         try:
-            room = await self.client.async_get_room(zone)
-            return room["current_temp"]
+            return self.controller.get_temperature(zone)
         except IntegrationRehauNeaSmart2ApiClientAuthenticationError as exception:
             raise ConfigEntryAuthFailed(exception) from exception
         except IntegrationRehauNeaSmart2ApiClientError as exception:
             raise UpdateFailed(exception) from exception
 
-    async def async_set_room(self, room: dict) -> any:
-        """Set the room settings.
+    def set_temperature(self, zone, temperature) -> float | None:
+        """Set the target temperature of a room.
 
         Args:
-            room (dict): The room settings.
+            zone: The zone of the room.
+            temperature: The target temperature of the room.
 
         Returns:
-            any: The response from the API.
+            float | None: The current temperature of the room, or None if not available.
 
         Raises:
             ConfigEntryAuthFailed: If authentication with the API fails.
-            UpdateFailed: If there is an error setting the room.
+            UpdateFailed: If there is an error retrieving the room temperature.
         """
         try:
-            return await self.client.async_set_room(room)
+            return self.controller.set_temperature({"zone": zone, "temperature": temperature})
         except IntegrationRehauNeaSmart2ApiClientAuthenticationError as exception:
             raise ConfigEntryAuthFailed(exception) from exception
         except IntegrationRehauNeaSmart2ApiClientError as exception:
             raise UpdateFailed(exception) from exception
 
-    async def async_set_operation_mode(self, mode: str) -> any:
+
+    def get_operation_mode(self, zone) -> str | None:
+        """Get the operation mode of a room.
+
+        Args:
+            zone: The zone of the room.
+
+        Returns:
+            str | None: The operation mode of the room, or None if not available.
+
+        Raises:
+            ConfigEntryAuthFailed: If authentication with the API fails.
+            UpdateFailed: If there is an error retrieving the room operation mode.
+        """
+        try:
+            return self.controller.get_operation_mode(zone)
+        except IntegrationRehauNeaSmart2ApiClientAuthenticationError as exception:
+            raise ConfigEntryAuthFailed(exception) from exception
+        except IntegrationRehauNeaSmart2ApiClientError as exception:
+            raise UpdateFailed(exception) from exception
+
+
+    def set_operation_mode(self, zone: int,  mode: str) -> any:
         """Set the operation mode.
 
         Args:
@@ -212,13 +187,53 @@ class RehauNeaSmart2DataUpdateCoordinator(DataUpdateCoordinator):
             UpdateFailed: If there is an error setting the operation mode.
         """
         try:
-            return await self.client.async_set_operation_mode(mode)
+            return self.controller.set_operation_mode({"zone": zone, "mode": mode})
         except IntegrationRehauNeaSmart2ApiClientAuthenticationError as exception:
             raise ConfigEntryAuthFailed(exception) from exception
         except IntegrationRehauNeaSmart2ApiClientError as exception:
             raise UpdateFailed(exception) from exception
 
-    async def async_set_energy_level(self, level: str) -> any:
+    def set_operation_mode_global(self, install_unique: str,  mode: str) -> any:
+        """Set the operation mode.
+
+        Args:
+            mode (str): The operation mode.
+
+        Returns:
+            any: The response from the API.
+
+        Raises:
+            ConfigEntryAuthFailed: If authentication with the API fails.
+            UpdateFailed: If there is an error setting the operation mode.
+        """
+        try:
+            return self.controller.set_operation_mode({"unique": install_unique, "mode": mode})
+        except IntegrationRehauNeaSmart2ApiClientAuthenticationError as exception:
+            raise ConfigEntryAuthFailed(exception) from exception
+        except IntegrationRehauNeaSmart2ApiClientError as exception:
+            raise UpdateFailed(exception) from exception
+
+    def get_energy_level(self, zone) -> str | None:
+        """Get the energy level of a room.
+
+        Args:
+            zone: The zone of the room.
+
+        Returns:
+            str | None: The energy level of the room, or None if not available.
+
+        Raises:
+            ConfigEntryAuthFailed: If authentication with the API fails.
+            UpdateFailed: If there is an error retrieving the room energy level.
+        """
+        try:
+            return self.controller.get_energy_level(zone)
+        except IntegrationRehauNeaSmart2ApiClientAuthenticationError as exception:
+            raise ConfigEntryAuthFailed(exception) from exception
+        except IntegrationRehauNeaSmart2ApiClientError as exception:
+            raise UpdateFailed(exception) from exception
+
+    def set_energy_level(self, zone: int, level: str) -> any:
         """Set the energy level.
 
         Args:
@@ -232,7 +247,45 @@ class RehauNeaSmart2DataUpdateCoordinator(DataUpdateCoordinator):
             UpdateFailed: If there is an error setting the energy level.
         """
         try:
-            return await self.client.async_set_energy_level(level)
+            return self.controller.set_energy_level({"zone": zone, "mode": level})
+        except IntegrationRehauNeaSmart2ApiClientAuthenticationError as exception:
+            raise ConfigEntryAuthFailed(exception) from exception
+        except IntegrationRehauNeaSmart2ApiClientError as exception:
+            raise UpdateFailed(exception) from exception
+
+    def get_global_energy_level(self) -> str | None:
+        """Get the global energy level.
+
+        Returns:
+            str | None: The global energy level, or None if not available.
+
+        Raises:
+            ConfigEntryAuthFailed: If authentication with the API fails.
+            UpdateFailed: If there is an error retrieving the global energy level.
+        """
+        try:
+            return self.controller.get_global_energy_level()
+        except IntegrationRehauNeaSmart2ApiClientAuthenticationError as exception:
+            raise ConfigEntryAuthFailed(exception) from exception
+        except IntegrationRehauNeaSmart2ApiClientError as exception:
+            raise UpdateFailed(exception) from exception
+
+
+    def set_global_energy_level(self, level: str) -> any:
+        """Set the global energy level.
+
+        Args:
+            level (str): The global energy level.
+
+        Returns:
+            any: The response from the API.
+
+        Raises:
+            ConfigEntryAuthFailed: If authentication with the API fails.
+            UpdateFailed: If there is an error setting the global energy level.
+        """
+        try:
+            return self.controller.set_global_energy_level({"mode": level})
         except IntegrationRehauNeaSmart2ApiClientAuthenticationError as exception:
             raise ConfigEntryAuthFailed(exception) from exception
         except IntegrationRehauNeaSmart2ApiClientError as exception:

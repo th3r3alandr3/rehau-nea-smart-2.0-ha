@@ -10,6 +10,7 @@ __pycache__
 .coverage
 .vscode
 coverage.xml
+custom_components/rehau_nea_smart_2/mqtt/data/*
 
 
 # Home Assistant configuration

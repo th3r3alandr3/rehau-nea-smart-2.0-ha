@@ -1,0 +1,185 @@
+import json
+import paho.mqtt.client as mqtt
+import threading
+import logging
+
+from .utils.helpers import generate_uuid
+from .handlers.auth import auth
+from .handlers.message import handle_message
+from .handlers.refresh import handle_refresh
+
+
+_LOGGER = logging.getLogger(__name__)
+
+
+class MqttClient:
+    def __init__(self, hass, username, password):
+        self.hass = hass
+        self.username = "app"
+        self.password = "appuserplatform"
+        self.auth_username = username
+        self.auth_password = password
+        self.token_data = None
+        self.user = None
+        self.installations = None
+        self.authenticated = False
+        self.referentials = None
+        self.install_id = None
+        self.client_id = "app"
+        self.client = None
+        self.topics = [{"topic": "$client/app", "options": {}}]
+        self.init_mqtt_client()
+
+    @staticmethod
+    async def check_credentials(hass, email, password):
+        valid =  await auth(hass, email, password, True)
+        if valid:
+            return True
+
+        raise Exception("Invalid credentials")
+
+
+    def is_authenticated(self):
+        return self.authenticated
+
+    def on_connect(self, client, userdata, flags, rc):
+        _LOGGER.debug("Connected with result code " + str(rc))
+
+    def on_message(self, client, userdata, msg):
+        handle_message(msg.topic, msg.payload, self)
+
+    def on_disconnect(self, client, userdata, rc):
+        if rc != 0:
+             _LOGGER.error("Unexpected disconnection.")
+
+    def set_install_id(self):
+        default_install = self.user["defaultInstall"]
+        installs = self.user["installs"]
+        for install in installs:
+            if install["unique"] == default_install:
+                self.install_id = install["_id"]
+                return
+
+    def read_user(self):
+        _LOGGER.debug("Read user")
+        payload = {
+            "clientid": self.client_id,
+            "sso": True,
+            "token": self.token_data["access_token"],
+            "data": {"demand": self.install_id if self.install_id else 'default'},
+        }
+        self.send_message("@server/user/read", payload)
+        threading.Timer(60, self.read_user).start()
+
+    def send_topics(self):
+        for topic in self.topics:
+            _LOGGER.debug(f"Subscribing to topic: {topic['topic']}")
+            self.client.subscribe(topic["topic"], **topic["options"])
+
+    def send_message(self, topic: str, message: dict):
+        json_message = json.dumps(message)
+        _LOGGER.debug(f"Sending message {topic}: {json_message}")
+        return self.client.publish(topic, payload=json_message)
+
+    def start_mqtt_client(self):
+        self.client.loop_start()
+
+    def disconnect(self):
+        for topic in self.topics:
+            _LOGGER.debug(f"Unsubscribing from topic: {topic['topic']}")
+            self.client.unsubscribe(topic["topic"])
+        self.client.disconnect()
+        self.client.loop_stop()
+        _LOGGER.debug("Disconnected")
+
+    def init_mqtt_client(self):
+        if self.client:
+            self.disconnect()
+
+        self.client = mqtt.Client(client_id=self.client_id, transport="websockets")
+        self.client.username_pw_set(self.username, self.password)
+        self.client.tls_set()
+        self.client.on_connect = self.on_connect
+        self.client.on_message = self.on_message
+        self.client.on_disconnect = self.on_disconnect
+        self.client.connect("iot.neasmart2.app.rehau.com", 8094)
+        self.send_topics()
+        self.start_mqtt_client()
+
+    def user_auth(self):
+        _LOGGER.debug("User auth")
+        payload = {
+            "clientid": self.client_id,
+            "token": self.token_data["access_token"],
+            "sso": True,
+            "data": {"transactionId": generate_uuid()},
+        }
+        self.send_message("@server/user/auth", payload)
+
+    async def auth_user(self):
+        token_data = await auth(self.hass, self.auth_username, self.auth_password)
+        self.set_token_data(token_data)
+        self.user_auth()
+
+    def refresh_token(self):
+        refresh_token = self.token_data["refresh_token"]
+        token_data = handle_refresh(refresh_token)
+        if token_data is not None:
+            self.set_token_data(token_data)
+        else:
+            self.auth_user()
+
+    def refresh_timer(self, expires_in):
+        _LOGGER.debug("Refreshing token in " + str(expires_in) + " seconds")
+        threading.Timer(expires_in, self.refresh_token).start()
+
+    def set_token_data(self, token_data):
+        expires_in = token_data["expires_in"] - 60
+        threading.Thread(target=self.refresh_timer, args=(expires_in,)).start()
+        self.token_data = token_data
+
+    def get_installations(self):
+        return self.installations
+
+    def get_user(self):
+        return self.user
+
+    def get_install_id(self):
+        return self.install_id
+
+    def get_referentials(self):
+        if self.referentials is not None:
+            return self.referentials
+        else:
+            with open("./data/referentials.json") as referentials_file:
+                self.referentials = json.load(referentials_file)["referentials"]
+                return self.referentials
+
+    def request_server_referentials(self):
+        payload = {
+            "clientid": self.client_id,
+            "data": {},
+            "sso": True,
+            "token": self.token_data["access_token"],
+        }
+        self.send_message("@server/user/referential", payload)
+
+    def update_channel(self, payload: dict):
+        channel_id = payload["channel_id"]
+        install_id = payload["install_id"]
+        mode_used = payload["mode_used"]
+        setpoint_used = payload["setpoint_used"]
+
+        installation = next((installation for installation in self.installations if installation["id"] == install_id), None)
+        if installation is None:
+            raise Exception("No installation found for id " + install_id)
+
+        for group in installation["groups"]:
+            for zone in group["zones"]:
+                for channel in zone["channels"]:
+                    if channel["id"] == channel_id:
+                        channel["energy_level"] = mode_used
+                        channel["target_temperature"] = setpoint_used
+                        return
+
+        raise Exception("No channel found for id " + channel_id)

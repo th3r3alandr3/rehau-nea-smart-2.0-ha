@@ -12,6 +12,8 @@ from homeassistant.const import (
     UnitOfTemperature,
 )
 
+from .mqtt.types.installation import Channel, Installation, Zone
+
 from .const import DOMAIN
 from .coordinator import RehauNeaSmart2DataUpdateCoordinator
 from .entity import IntegrationRehauNeaSmart2Entity
@@ -31,15 +33,19 @@ async def async_setup_entry(hass, entry, async_add_devices):
     """Set up the sensor platform."""
     coordinator = hass.data[DOMAIN][entry.entry_id]
 
-    rooms = await coordinator._async_update_data()
+    installations: list[Installation] = await coordinator._async_update_data()
 
     devices = []
 
     for entity_description in ENTITY_DESCRIPTIONS:
-        for room in rooms:
-            devices.append(
-                RehauNeasmart2TemperatureSensor(coordinator, room, entity_description)
-            )
+        for installation in installations:
+            for group in installation.groups:
+                for zone in group.zones:
+                        devices.append(
+                            RehauNeasmart2TemperatureSensor(
+                                coordinator, zone, entity_description
+                            )
+                        )
 
     async_add_devices(devices)
 
@@ -67,22 +73,23 @@ class RehauNeasmartGenericSensor(SensorEntity, RestoreEntity):
 
     _attr_has_entity_name = False
 
-    def __init__(self, device, room):
+    def __init__(self, coordinator: RehauNeaSmart2DataUpdateCoordinator, zone: Zone):
         """Initialize the generic sensor class."""
-        self._device = device
+        self._zone = zone
+        self._coordinator = coordinator
         self._available = True
-        self._zone = room["id"]
-        self._name = room["room_name"]
-        self._state = room["current_temp"]
+        self._zone_number = zone.number
+        self._name = zone.name
+        self._state = round((zone.channels[0].current_temperature / 10 - 32) / 1.8, 1)
 
     @property
     def device_info(self):
         """Return device information for the sensor."""
         return DeviceInfo(
-            identifiers={(DOMAIN, self._device.id)},
-            name=self._device.name,
-            manufacturer=self._device.manufacturer,
-            model=self._device.model,
+            identifiers={(DOMAIN, self._coordinator.id)},
+            name=self._coordinator.name,
+            manufacturer=self._coordinator.manufacturer,
+            model=self._coordinator.model,
         )
 
     @property
@@ -104,20 +111,20 @@ class RehauNeasmart2TemperatureSensor(RehauNeasmartGenericSensor):
 
     def __init__(
         self,
-        device,
-        room,
+        coordinator,
+        zone: Zone,
         entity_description: SensorEntityDescription,
     ):
         """Initialize the temperature sensor class."""
-        super().__init__(device, room)
+        super().__init__(coordinator, zone)
         self._attr_unique_id = f"{self._zone}_temperature"
         self._attr_name = f"{self._name} Temperature"
         self.entity_description = entity_description
 
     async def async_update(self) -> None:
         """Update the temperature sensor."""
-        temperature = await self._device.get_temperature(self._zone)
+        temperature = self._coordinator.get_temperature(self._zone_number)
         if temperature is not None:
             self._state = temperature
         else:
-            _LOGGER.error(f"Error updating {self._zone}_temperature")
+            _LOGGER.error(f"Error updating {self._zone.name} temperature")

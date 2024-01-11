@@ -3,9 +3,10 @@
         "flow_title": "Rehau Nea Smart 2",
         "step": {
             "user": {
-                "description": "Geben Sie die API-URL ein",
+                "description": "Bitte geben Sie Ihre Benutzerdaten ein.",
                 "data": {
-                    "url": "URL"
+                    "email": "E-Mail",
+                    "password": "Passwort"
                 }
             }
         },
@@ -21,10 +22,12 @@
                 "state_attributes": {
                     "preset_mode": {
                         "state": {
-                            "Normal": "Normal",
-                            "Reduced": "Reduziert",
-                            "Standby": "Standby",
-                            "Party": "Party"
+                            "normal": "Normal",
+                            "reduced": "Reduziert",
+                            "standby": "Standby",
+                            "party": "Party",
+                            "auto": "Auto",
+                            "vacation": "Urlaub"
                         }
                     }
                 }
@@ -33,20 +36,21 @@
         "select": {
             "climate_mode": {
                 "state": {
-                    "Heating": "Heizen",
-                    "Cooling": "Kühlen",
-                    "Heating and Cooling": "Auto",
-                    "Manual Heating": "Manuelles Heizen",
-                    "Manual Cooling": "Manuelles Kühlen"
+                    "heating": "Heizen",
+                    "cooling": "Kühlen",
+                    "auto": "Auto",
+                    "manual_heating": "Manuelles Heizen",
+                    "manual_cooling": "Manuelles Kühlen"
                 }
             },
             "energy_level": {
                 "state": {
-                    "Normal": "Normal",
-                    "Reduced": "Reduziert",
-                    "Standby": "Standby",
-                    "Auto": "Auto",
-                    "Vacation": "Urlaub"
+                    "normal": "Normal",
+                    "reduced": "Reduziert",
+                    "standby": "Standby",
+                    "party": "Party",
+                    "auto": "Auto",
+                    "vacation": "Urlaub"
                 }
             }
         }

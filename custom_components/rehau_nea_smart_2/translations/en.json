@@ -3,9 +3,10 @@
         "flow_title": "Rehau Nea Smart 2",
         "step": {
             "user": {
-                "description": "Enter the API URL",
+                "description": "Plesae enter your email and password.",
                 "data": {
-                    "url": "URL"
+                    "email": "Email",
+                    "password": "Password"
                 }
             }
         },
@@ -21,10 +22,12 @@
                 "state_attributes": {
                     "preset_mode": {
                         "state": {
-                            "Normal": "Normal",
-                            "Reduced": "Reduced",
-                            "Standby": "Standby",
-                            "Party": "Party"
+                            "normal": "Normal",
+                            "reduced": "Reduced",
+                            "standby": "Standby",
+                            "auto": "Auto",
+                            "party": "Party",
+                            "vacation": "Vacation"
                         }
                     }
                 }
@@ -33,20 +36,21 @@
         "select": {
             "climate_mode": {
                 "state": {
-                    "Heating": "Heating",
-                    "Cooling": "Cooling",
-                    "Heating and Cooling": "Auto",
-                    "Manual Heating": "Manual Heating",
-                    "Manual Cooling": "Manual Cooling"
+                    "heating": "Heating",
+                    "hooling": "Cooling",
+                    "auto": "Auto",
+                    "manual_heating": "Manual Heating",
+                    "manual_cooling": "Manual Cooling"
                 }
             },
             "energy_level": {
                 "state": {
-                    "Normal": "Normal",
-                    "Reduced": "Reduced",
-                    "Standby": "Standby",
-                    "Auto": "Auto",
-                    "Vacation": "Vacation"
+                    "normal": "Normal",
+                    "reduced": "Reduced",
+                    "standby": "Standby",
+                    "auto": "Auto",
+                    "party": "Party",
+                    "vacation": "Vacation"
                 }
             }
         }
