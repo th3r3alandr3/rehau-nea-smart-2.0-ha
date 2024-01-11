@@ -19,10 +19,10 @@ The Rehua Nea Smart 2.0 Home Assistant Integration empowers you to control and m
 - Ensure that you have already set up a Rehua Nea Smart 2.0 account and successfully linked your device to your account.
 
 ### HACS (Home Assistant Community Store)
-a. Add this repository as a custom repository in HACS.
-b. Search for the Rehua Nea Smart 2.0 Integration and proceed with the installation.
-c. Restart Home Assistant.
-d. Navigate to Configuration -> Integrations and add the Rehua Nea Smart 2.0 Integration.
+1. Add this repository as a custom repository in HACS.
+2. Search for the Rehua Nea Smart 2.0 Integration and proceed with the installation.
+3. Restart Home Assistant.
+4. Navigate to Settings -> Devices and Services -> Integrations and add the Rehua Nea Smart 2.0 Integration.
 
 ## Troubleshooting
 - Should you encounter any issues with the integration, kindly open an issue on the GitHub repository for prompt assistance.
