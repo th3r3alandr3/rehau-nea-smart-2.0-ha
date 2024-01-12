@@ -12,16 +12,13 @@ from homeassistant.helpers.update_coordinator import (
 )
 from homeassistant.exceptions import ConfigEntryAuthFailed
 
-from .mqtt.types.installation import Installation, Zone
-
-from .api import (
-    IntegrationRehauNeaSmart2ApiClient,
-    IntegrationRehauNeaSmart2ApiClientAuthenticationError,
-    IntegrationRehauNeaSmart2ApiClientError,
+from .mqtt import (
+    MqttClientAuthenticationError,
+    MqttClientError,
+    Installation,
+    Zone,
+    Controller,
 )
-
-from .mqtt.Controller import Controller
-
 
 from .const import DOMAIN, LOGGER
 
@@ -47,7 +44,7 @@ class RehauNeaSmart2DataUpdateCoordinator(DataUpdateCoordinator):
         Args:
             hass (HomeAssistant): The Home Assistant instance.
             sysname (str): The system name.
-            client (IntegrationRehauNeaSmart2ApiClient): The API client.
+            controller (Controller): The controller instance.
         """
         self.controller = controller
         self.name = f"{sysname} Climate Control System"
@@ -70,9 +67,9 @@ class RehauNeaSmart2DataUpdateCoordinator(DataUpdateCoordinator):
         """
         try:
             return await self.controller.is_authenticated()
-        except IntegrationRehauNeaSmart2ApiClientAuthenticationError:
+        except MqttClientAuthenticationError:
             return False
-        except IntegrationRehauNeaSmart2ApiClientError:
+        except MqttClientError:
             return False
 
     async def _async_update_data(self) -> list[Installation]:
@@ -87,9 +84,9 @@ class RehauNeaSmart2DataUpdateCoordinator(DataUpdateCoordinator):
         """
         try:
             return self.controller.get_installations()
-        except IntegrationRehauNeaSmart2ApiClientAuthenticationError as exception:
+        except MqttClientAuthenticationError as exception:
             raise ConfigEntryAuthFailed(exception) from exception
-        except IntegrationRehauNeaSmart2ApiClientError as exception:
+        except MqttClientError as exception:
             raise UpdateFailed(exception) from exception
 
     def get_zone(self, zone) -> Zone:
@@ -104,11 +101,10 @@ class RehauNeaSmart2DataUpdateCoordinator(DataUpdateCoordinator):
         """
         try:
             return self.controller.get_zone(zone)
-        except IntegrationRehauNeaSmart2ApiClientAuthenticationError as exception:
+        except MqttClientAuthenticationError as exception:
             raise ConfigEntryAuthFailed(exception) from exception
-        except IntegrationRehauNeaSmart2ApiClientError as exception:
+        except MqttClientError as exception:
             raise UpdateFailed(exception) from exception
-
 
     def get_temperature(self, zone) -> float | None:
         """Get the current temperature of a room.
@@ -125,9 +121,9 @@ class RehauNeaSmart2DataUpdateCoordinator(DataUpdateCoordinator):
         """
         try:
             return self.controller.get_temperature(zone)
-        except IntegrationRehauNeaSmart2ApiClientAuthenticationError as exception:
+        except MqttClientAuthenticationError as exception:
             raise ConfigEntryAuthFailed(exception) from exception
-        except IntegrationRehauNeaSmart2ApiClientError as exception:
+        except MqttClientError as exception:
             raise UpdateFailed(exception) from exception
 
     def set_temperature(self, zone, temperature) -> float | None:
@@ -145,12 +141,13 @@ class RehauNeaSmart2DataUpdateCoordinator(DataUpdateCoordinator):
             UpdateFailed: If there is an error retrieving the room temperature.
         """
         try:
-            return self.controller.set_temperature({"zone": zone, "temperature": temperature})
-        except IntegrationRehauNeaSmart2ApiClientAuthenticationError as exception:
+            return self.controller.set_temperature(
+                {"zone": zone, "temperature": temperature}
+            )
+        except MqttClientAuthenticationError as exception:
             raise ConfigEntryAuthFailed(exception) from exception
-        except IntegrationRehauNeaSmart2ApiClientError as exception:
+        except MqttClientError as exception:
             raise UpdateFailed(exception) from exception
-
 
     def get_operation_mode(self, zone) -> str | None:
         """Get the operation mode of a room.
@@ -167,16 +164,18 @@ class RehauNeaSmart2DataUpdateCoordinator(DataUpdateCoordinator):
         """
         try:
             return self.controller.get_operation_mode(zone)
-        except IntegrationRehauNeaSmart2ApiClientAuthenticationError as exception:
+        except MqttClientAuthenticationError as exception:
             raise ConfigEntryAuthFailed(exception) from exception
-        except IntegrationRehauNeaSmart2ApiClientError as exception:
+        except MqttClientError as exception:
             raise UpdateFailed(exception) from exception
 
-
-    def set_operation_mode(self, zone: int,  mode: str) -> any:
+    def set_operation_mode(self, zone: int, mode: str) -> any:
         """Set the operation mode.
 
+        This method sets the operation mode for a specific zone.
+
         Args:
+            zone (int): The zone number.
             mode (str): The operation mode.
 
         Returns:
@@ -188,16 +187,19 @@ class RehauNeaSmart2DataUpdateCoordinator(DataUpdateCoordinator):
         """
         try:
             return self.controller.set_operation_mode({"zone": zone, "mode": mode})
-        except IntegrationRehauNeaSmart2ApiClientAuthenticationError as exception:
+        except MqttClientAuthenticationError as exception:
             raise ConfigEntryAuthFailed(exception) from exception
-        except IntegrationRehauNeaSmart2ApiClientError as exception:
+        except MqttClientError as exception:
             raise UpdateFailed(exception) from exception
 
-    def set_operation_mode_global(self, install_unique: str,  mode: str) -> any:
-        """Set the operation mode.
+    def set_operation_mode_global(self, install_unique: str, mode: str) -> any:
+        """Set the operation mode globally for all devices.
+
+        This method sets the operation mode for all devices associated with the given installation unique identifier.
 
         Args:
-            mode (str): The operation mode.
+            install_unique (str): The unique identifier of the installation.
+            mode (str): The operation mode to set.
 
         Returns:
             any: The response from the API.
@@ -207,17 +209,19 @@ class RehauNeaSmart2DataUpdateCoordinator(DataUpdateCoordinator):
             UpdateFailed: If there is an error setting the operation mode.
         """
         try:
-            return self.controller.set_operation_mode({"unique": install_unique, "mode": mode})
-        except IntegrationRehauNeaSmart2ApiClientAuthenticationError as exception:
+            return self.controller.set_operation_mode(
+                {"unique": install_unique, "mode": mode}
+            )
+        except MqttClientAuthenticationError as exception:
             raise ConfigEntryAuthFailed(exception) from exception
-        except IntegrationRehauNeaSmart2ApiClientError as exception:
+        except MqttClientError as exception:
             raise UpdateFailed(exception) from exception
 
     def get_energy_level(self, zone) -> str | None:
         """Get the energy level of a room.
 
         Args:
-            zone: The zone of the room.
+            zone (str): The zone of the room.
 
         Returns:
             str | None: The energy level of the room, or None if not available.
@@ -228,15 +232,16 @@ class RehauNeaSmart2DataUpdateCoordinator(DataUpdateCoordinator):
         """
         try:
             return self.controller.get_energy_level(zone)
-        except IntegrationRehauNeaSmart2ApiClientAuthenticationError as exception:
+        except MqttClientAuthenticationError as exception:
             raise ConfigEntryAuthFailed(exception) from exception
-        except IntegrationRehauNeaSmart2ApiClientError as exception:
+        except MqttClientError as exception:
             raise UpdateFailed(exception) from exception
 
     def set_energy_level(self, zone: int, level: str) -> any:
         """Set the energy level.
 
         Args:
+            zone (int): The zone identifier.
             level (str): The energy level.
 
         Returns:
@@ -248,9 +253,9 @@ class RehauNeaSmart2DataUpdateCoordinator(DataUpdateCoordinator):
         """
         try:
             return self.controller.set_energy_level({"zone": zone, "mode": level})
-        except IntegrationRehauNeaSmart2ApiClientAuthenticationError as exception:
+        except MqttClientAuthenticationError as exception:
             raise ConfigEntryAuthFailed(exception) from exception
-        except IntegrationRehauNeaSmart2ApiClientError as exception:
+        except MqttClientError as exception:
             raise UpdateFailed(exception) from exception
 
     def get_global_energy_level(self) -> str | None:
@@ -265,11 +270,10 @@ class RehauNeaSmart2DataUpdateCoordinator(DataUpdateCoordinator):
         """
         try:
             return self.controller.get_global_energy_level()
-        except IntegrationRehauNeaSmart2ApiClientAuthenticationError as exception:
+        except MqttClientAuthenticationError as exception:
             raise ConfigEntryAuthFailed(exception) from exception
-        except IntegrationRehauNeaSmart2ApiClientError as exception:
+        except MqttClientError as exception:
             raise UpdateFailed(exception) from exception
-
 
     def set_global_energy_level(self, level: str) -> any:
         """Set the global energy level.
@@ -286,7 +290,7 @@ class RehauNeaSmart2DataUpdateCoordinator(DataUpdateCoordinator):
         """
         try:
             return self.controller.set_global_energy_level({"mode": level})
-        except IntegrationRehauNeaSmart2ApiClientAuthenticationError as exception:
+        except MqttClientAuthenticationError as exception:
             raise ConfigEntryAuthFailed(exception) from exception
-        except IntegrationRehauNeaSmart2ApiClientError as exception:
+        except MqttClientError as exception:
             raise UpdateFailed(exception) from exception

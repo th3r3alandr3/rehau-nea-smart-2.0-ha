@@ -1,14 +1,16 @@
+"""Handlers for MQTT messages."""
 import json
 import logging
 
-from ..utils.helpers import save_as_json
-from ..utils.decompress import decompress_utf16
+from ..utils import save_as_json, decompress_utf16
 from .installation import parse_installations
 import base64
 
 _LOGGER = logging.getLogger(__name__)
 
+
 def handle_message(topic: str, payload: str, client):
+    """Handle MQTT message."""
     _LOGGER.debug("Handling message: " + topic)
     if topic == "$client/app":
         handle_app_message(payload, client)
@@ -17,6 +19,7 @@ def handle_message(topic: str, payload: str, client):
 
 
 def handle_app_message(payload: str, client):
+    """Handle app message."""
     message = json.loads(payload)
     _LOGGER.debug("Handling app message: " + message["type"])
     if message["type"] == "auth_user":
@@ -24,7 +27,9 @@ def handle_app_message(payload: str, client):
     else:
         _LOGGER.debug("Unhandled app message: " + message["type"])
 
+
 def handle_user_message(payload: str, client):
+    """Handle user message."""
     message = json.loads(payload)
     _LOGGER.debug("Handling user message: " + message["type"])
     if message["type"] == "read_user":
@@ -38,6 +43,7 @@ def handle_user_message(payload: str, client):
 
 
 def handle_user_read(message: dict, client):
+    """Handle user read."""
     data = decompress_utf16(message["data"])
     client.user = data
     installations = client.user["installs"]
@@ -49,6 +55,7 @@ def handle_user_read(message: dict, client):
 
 
 def handle_user_auth(message: dict, client):
+    """Handle user auth."""
     data = decompress_utf16(message["data"])
     client.user = data["user"]
     client.set_install_id()
@@ -57,16 +64,18 @@ def handle_user_auth(message: dict, client):
     client.username = client.user["username"]
     client.client_id = client.username
 
-    client.topics.append({
+    client.topics = [{
         "topic": "$client/" + client.username,
         "options": {}
-    })
+    }]
     client.init_mqtt_client()
     client.authenticated = True
     client.request_server_referentials()
-    client.read_user()
+    client.refresh()
+
 
 def handle_channel_update(message, client):
+    """Handle channel update."""
     channel_id = message["data"]["channel"]
     data = message["data"]["data"]
     mode_used = data["mode_used"]
@@ -79,7 +88,9 @@ def handle_channel_update(message, client):
         "setpoint_used": message["data"]["data"]["setpoint_used"]
     })
 
+
 def handle_referential(message, client):
+    """Handle referential."""
     referentials = message["data"]
     client.referentials = referentials
     save_as_json(referentials, "referentials.json")

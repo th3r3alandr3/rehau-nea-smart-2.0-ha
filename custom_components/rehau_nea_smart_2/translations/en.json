@@ -1,58 +1,58 @@
 {
-    "config": {
-        "flow_title": "Rehau Nea Smart 2",
-        "step": {
-            "user": {
-                "description": "Plesae enter your email and password.",
-                "data": {
-                    "email": "Email",
-                    "password": "Password"
-                }
-            }
-        },
-        "error": {
-            "auth": "Username/Password is wrong.",
-            "connection": "Unable to connect to the server.",
-            "unknown": "Unknown error occurred."
+  "config": {
+    "flow_title": "Rehau Nea Smart 2",
+    "step": {
+      "user": {
+        "description": "Plesae enter your email and password.",
+        "data": {
+          "email": "Email",
+          "password": "Password"
         }
+      }
     },
-    "entity": {
-        "climate": {
-            "rehauneasmart2": {
-                "state_attributes": {
-                    "preset_mode": {
-                        "state": {
-                            "normal": "Normal",
-                            "reduced": "Reduced",
-                            "standby": "Standby",
-                            "auto": "Auto",
-                            "party": "Party",
-                            "vacation": "Vacation"
-                        }
-                    }
-                }
-            }
-        },
-        "select": {
-            "climate_mode": {
-                "state": {
-                    "heating": "Heating",
-                    "hooling": "Cooling",
-                    "auto": "Auto",
-                    "manual_heating": "Manual Heating",
-                    "manual_cooling": "Manual Cooling"
-                }
-            },
-            "energy_level": {
-                "state": {
-                    "normal": "Normal",
-                    "reduced": "Reduced",
-                    "standby": "Standby",
-                    "auto": "Auto",
-                    "party": "Party",
-                    "vacation": "Vacation"
-                }
-            }
-        }
+    "error": {
+      "auth": "Username/Password is wrong.",
+      "connection": "Unable to connect to the server.",
+      "unknown": "Unknown error occurred."
     }
+  },
+  "entity": {
+    "climate": {
+      "rehauneasmart2": {
+        "state_attributes": {
+          "preset_mode": {
+            "state": {
+              "normal": "Normal",
+              "reduced": "Reduced",
+              "standby": "Standby",
+              "auto": "Auto",
+              "party": "Party",
+              "vacation": "Vacation"
+            }
+          }
+        }
+      }
+    },
+    "select": {
+      "climate_mode": {
+        "state": {
+          "heating": "Heating",
+          "hooling": "Cooling",
+          "auto": "Auto",
+          "manual_heating": "Manual Heating",
+          "manual_cooling": "Manual Cooling"
+        }
+      },
+      "energy_level": {
+        "state": {
+          "normal": "Normal",
+          "reduced": "Reduced",
+          "standby": "Standby",
+          "auto": "Auto",
+          "party": "Party",
+          "vacation": "Vacation"
+        }
+      }
+    }
+  }
 }

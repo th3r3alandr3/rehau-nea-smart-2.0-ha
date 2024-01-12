@@ -5,16 +5,14 @@ import voluptuous as vol
 from homeassistant import config_entries
 from homeassistant.const import CONF_EMAIL, CONF_PASSWORD
 from homeassistant.helpers import selector
-from homeassistant.helpers.aiohttp_client import async_create_clientsession
 
-from .mqtt.MqttClient import MqttClient
-
-from .api import (
-    IntegrationRehauNeaSmart2ApiClient,
-    IntegrationRehauNeaSmart2ApiClientAuthenticationError,
-    IntegrationRehauNeaSmart2ApiClientCommunicationError,
-    IntegrationRehauNeaSmart2ApiClientError,
+from .mqtt import (
+    MqttClientAuthenticationError,
+    MqttClientCommunicationError,
+    MqttClientError,
+    MqttClient,
 )
+
 from .const import DOMAIN, LOGGER
 
 
@@ -24,8 +22,8 @@ class RehauNeaSmart2FlowHandler(config_entries.ConfigFlow, domain=DOMAIN):
     VERSION = 1
 
     async def async_step_user(
-        self,
-        user_input: dict | None = None,
+            self,
+            user_input: dict | None = None,
     ) -> config_entries.FlowResult:
         """Handle a flow initialized by the user."""
         _errors = {}
@@ -35,13 +33,13 @@ class RehauNeaSmart2FlowHandler(config_entries.ConfigFlow, domain=DOMAIN):
                     email=user_input[CONF_EMAIL],
                     password=user_input[CONF_PASSWORD],
                 )
-            except IntegrationRehauNeaSmart2ApiClientAuthenticationError as exception:
+            except MqttClientAuthenticationError as exception:
                 LOGGER.warning(exception)
                 _errors["base"] = "auth"
-            except IntegrationRehauNeaSmart2ApiClientCommunicationError as exception:
+            except MqttClientCommunicationError as exception:
                 LOGGER.error(exception)
                 _errors["base"] = "connection"
-            except IntegrationRehauNeaSmart2ApiClientError as exception:
+            except MqttClientError as exception:
                 LOGGER.exception(exception)
                 _errors["base"] = "unknown"
             else:
@@ -78,6 +76,6 @@ class RehauNeaSmart2FlowHandler(config_entries.ConfigFlow, domain=DOMAIN):
     async def _test_credentials(self, email: str, password: str) -> None:
         """Validate credentials."""
         try:
-            await MqttClient.check_credentials(email=email, password=password,    hass=self.hass)
+            await MqttClient.check_credentials(email=email, password=password, hass=self.hass)
         except Exception as exception:
-            raise IntegrationRehauNeaSmart2ApiClientAuthenticationError from exception
+            raise MqttClientAuthenticationError from exception

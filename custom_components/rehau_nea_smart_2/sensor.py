@@ -12,7 +12,7 @@ from homeassistant.const import (
     UnitOfTemperature,
 )
 
-from .mqtt.types.installation import Channel, Installation, Zone
+from .mqtt import Installation, Zone
 
 from .const import DOMAIN
 from .coordinator import RehauNeaSmart2DataUpdateCoordinator
@@ -41,11 +41,11 @@ async def async_setup_entry(hass, entry, async_add_devices):
         for installation in installations:
             for group in installation.groups:
                 for zone in group.zones:
-                        devices.append(
-                            RehauNeasmart2TemperatureSensor(
-                                coordinator, zone, entity_description
-                            )
+                    devices.append(
+                        RehauNeasmart2TemperatureSensor(
+                            coordinator, zone, entity_description
                         )
+                    )
 
     async_add_devices(devices)
 
@@ -54,9 +54,9 @@ class IntegrationRehauNeaSmart2Sensor(IntegrationRehauNeaSmart2Entity, SensorEnt
     """rehau_nea_smart_2 Sensor class."""
 
     def __init__(
-        self,
-        coordinator: RehauNeaSmart2DataUpdateCoordinator,
-        entity_description: SensorEntityDescription,
+            self,
+            coordinator: RehauNeaSmart2DataUpdateCoordinator,
+            entity_description: SensorEntityDescription,
     ) -> None:
         """Initialize the sensor class."""
         super().__init__(coordinator)
@@ -110,10 +110,10 @@ class RehauNeasmart2TemperatureSensor(RehauNeasmartGenericSensor):
     _attr_native_unit_of_measurement = UnitOfTemperature.CELSIUS
 
     def __init__(
-        self,
-        coordinator,
-        zone: Zone,
-        entity_description: SensorEntityDescription,
+            self,
+            coordinator,
+            zone: Zone,
+            entity_description: SensorEntityDescription,
     ):
         """Initialize the temperature sensor class."""
         super().__init__(coordinator, zone)

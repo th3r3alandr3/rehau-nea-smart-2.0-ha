@@ -1,10 +1,9 @@
 """Platform for climate integration."""
-import json
 import logging
 from .coordinator import (
     RehauNeaSmart2DataUpdateCoordinator,
 )
-from .mqtt.types.installation import Installation, Zone
+from .mqtt import Installation, Zone
 from .const import (
     DOMAIN,
     NAME,
@@ -80,7 +79,7 @@ class IntegrationRehauNeaSmart2Climate(ClimateEntity, RestoreEntity):
             "operation_mode": operating_mode,
             "heating_normal": channel.setpoints.heating.normal,
             "heating_reduced": channel.setpoints.heating.reduced,
-            "heating_standby" : channel.setpoints.heating.standby,
+            "heating_standby": channel.setpoints.heating.standby,
             "cooling_normal": channel.setpoints.cooling.normal,
             "cooling_reduced": channel.setpoints.cooling.reduced,
         }
@@ -115,11 +114,11 @@ class RehauNeaSmart2RoomClimate(IntegrationRehauNeaSmart2Climate):
     """Representation of a Rehau Nea Smart 2 room climate entity."""
 
     def __init__(
-        self,
-        coordinator: RehauNeaSmart2DataUpdateCoordinator,
-        zone,
-        operating_mode,
-        entity_description: ClimateEntityDescription,
+            self,
+            coordinator: RehauNeaSmart2DataUpdateCoordinator,
+            zone,
+            operating_mode,
+            entity_description: ClimateEntityDescription,
     ):
         """Initialize the Rehau Nea Smart 2 room climate entity."""
         super().__init__(coordinator, zone, operating_mode)
@@ -159,20 +158,19 @@ class RehauNeaSmart2RoomClimate(IntegrationRehauNeaSmart2Climate):
     async def async_set_preset_mode(self, preset_mode: str):
         """Set the preset mode of the climate entity."""
         mode = PRESET_ENERGY_LEVELS_MAPPING[preset_mode]
-        print(f"Setting mode to {mode}")
+        _LOGGER.debug(f"Setting mode to {mode}")
         self._coordinator.set_energy_level(self._zone_number, mode)
-
 
     async def async_set_temperature(self, **kwargs):
         """Set the target temperature of the climate entity."""
         temperature = kwargs.get(ATTR_TEMPERATURE)
         if temperature is None:
             return
-        print(f"Setting temperature to {temperature}")
+        _LOGGER.debug(f"Setting temperature to {temperature}")
         self._coordinator.set_temperature(self._zone_number, temperature)
 
     async def async_set_hvac_mode(self, hvac_mode: str):
         """Set the HVAC mode of the climate entity."""
         operation_mode = PRESET_CLIMATE_MODES_MAPPING_REVERSE[hvac_mode]
-        print(f"Setting operation mode to {operation_mode}")
+        _LOGGER.debug(f"Setting operation mode to {operation_mode}")
         self._coordinator.set_operation_mode(self._zone_number, operation_mode)

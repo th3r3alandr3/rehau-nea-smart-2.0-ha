@@ -1,33 +1,67 @@
+"""Controller module for the REHAU NEA SMART 2 integration."""
 from homeassistant.core import HomeAssistant
-from .types.installation import Installation, Zone
+
+from .utils import replace_keys, EnergyLevels, OperationModes
+from .models import Installation, Zone
 from .MqttClient import MqttClient
-from .utils.helpers import replace_keys, EnergyLevels, OperationModes
+from .exceptions import MqttClientError
 
 
 class Controller:
+    """Controller class for the REHAU NEA SMART 2 integration."""
+
     def __init__(self, hass: HomeAssistant, email: str, password: str):
+        """Initializ the Controller object.
+
+        Args:
+            hass (HomeAssistant): The HomeAssistant instance.
+            email (str): The email address for authentication.
+            password (str): The password for authentication.
+        """
         self.mqtt_client = MqttClient(hass, username=email, password=password)
         self.hass = hass
 
     async def connect(self):
+        """Connect to the MQTT broker and authenticates the user."""
         await self.mqtt_client.auth_user()
 
     async def disconnect(self):
-        await self.mqtt_client.disconnect()
+        """Disconnect from the MQTT broker."""
+        self.mqtt_client.disconnect()
 
     def is_authenticated(self):
+        """Check if the user is authenticated.
+
+        Returns:
+            bool: True if authenticated, False otherwise.
+        """
         return self.mqtt_client.is_authenticated()
 
     def get_installations(self) -> list[Installation]:
+        """Retrieve the list of installations.
+
+        Returns:
+            list[Installation]: The list of installations.
+        """
         installations = self.mqtt_client.get_installations()
         if installations is None:
             return None
         return [Installation(**installation) for installation in installations]
 
     def get_installations_as_dict(self) -> list[dict]:
+        """Retrieve the list of installations as a dictionary.
+
+        Returns:
+            list[dict]: The list of installations as a dictionary.
+        """
         return self.mqtt_client.get_installations()
 
     def get_zones(self) -> list[Zone]:
+        """Retrieve the list of zones.
+
+        Returns:
+            list[Zone]: The list of zones.
+        """
         zones = []
         for installation in self.get_installations():
             for group in installation.groups:
@@ -36,21 +70,55 @@ class Controller:
         return zones
 
     def get_zone(self, zone_number: int) -> Zone:
+        """Retrieve a specific zone by zone number.
+
+        Args:
+            zone_number (int): The zone number.
+
+        Returns:
+            Zone: The zone object.
+
+        Raises:
+            MqttClientError: If no zone is found for the given zone number.
+        """
         for zone in self.get_zones():
             if zone.number == zone_number:
                 return zone
-        raise Exception("No zone found for zone " + str(zone_number))
+        raise MqttClientError("No zone found for zone " + str(zone_number))
 
-    def get_installation_unique_by_zone(self, zone_number: int):
+    def get_installation_unique_by_zone(self, zone_number: int) -> str:
+        """Retrieve the unique installation identifier for a specific zone.
+
+        Args:
+            zone_number (int): The zone number.
+
+        Returns:
+            str: The unique installation identifier.
+
+        Raises:
+            MqttClientError: If no zone is found for the given zone number.
+        """
         installations = self.get_installations_as_dict()
         for installation in installations:
             for group in installation["groups"]:
                 for zone in group["zones"]:
                     if zone["number"] == zone_number:
                         return installation["unique"]
-        raise Exception("No zone found for zone " + str(zone_number))
+        raise MqttClientError("No zone found for zone " + str(zone_number))
 
     def get_zone_value_by_key(self, key: str, zone_number: int):
+        """Retrieve the value of a specific key for a specific zone.
+
+        Args:
+            key (str): The key to retrieve the value for.
+            zone_number (int): The zone number.
+
+        Returns:
+            Any: The value of the key.
+
+        Raises:
+            MqttClientError: If no zone is found for the given zone number or if no value is found for the key.
+        """
         installations = self.get_installations_as_dict()
         for installation in installations:
             for group in installation["groups"]:
@@ -62,14 +130,34 @@ class Controller:
                                 if key in channel:
                                     values.append(channel[key])
                             if len(values) == 0:
-                                raise Exception("No value found for key " + key + " in zone " + str(zone_number))
+                                raise MqttClientError(
+                                    "No value found for key "
+                                    + key
+                                    + " in zone "
+                                    + str(zone_number)
+                                )
                             return sum(values) / len(values)
                         else:
-                            raise Exception(
-                                "Multiple channels found for zone " + str(zone_number) + " cannot return _id")
-        raise Exception("No zone found for zone " + str(zone_number))
+                            raise MqttClientError(
+                                "Multiple channels found for zone "
+                                + str(zone_number)
+                                + " cannot return _id"
+                            )
+        raise MqttClientError("No zone found for zone " + str(zone_number))
 
-    def get_temperature(self, zone: int, unit="C"):
+    def get_temperature(self, zone: int, unit="C") -> float:
+        """Retrieve the temperature for a specific zone.
+
+        Args:
+            zone (int): The zone number.
+            unit (str, optional): The unit of temperature. Defaults to "C".
+
+        Returns:
+            float: The temperature value.
+
+        Raises:
+            MqttClientError: If no zone is found for the given zone number.
+        """
         temperature = self.get_zone_value_by_key("current_temperature", zone) / 10
         if unit == "C":
             temperature_celsius = (temperature - 32) / 1.8
@@ -78,54 +166,116 @@ class Controller:
         return temperature
 
     def set_temperature(self, payload: dict):
+        """Set the temperature for a specific zone.
+
+        Args:
+            payload (dict): The payload containing the temperature and zone information.
+
+        Returns:
+            Any: The result of the message sending operation.
+
+        Raises:
+            MqttClientError: If the temperature or zone is not found in the payload.
+        """
         if "temperature" not in payload:
-            raise Exception("No temperature found in payload")
+            raise MqttClientError("No temperature found in payload")
 
         if "zone" not in payload:
-            raise Exception("No zone found in payload")
+            raise MqttClientError("No zone found in payload")
 
         temperature = payload["temperature"] * 10
         if "unit" not in payload or payload["unit"] == "C":
             temperature = temperature * 1.8 + 320
 
-        temperature_request = replace_keys({
-            "controller": payload["controller"] if "controller" in payload else 0,
-            "data": {"setpoint_used": temperature},
-            "type": "REQ_TH",
-            "zone": payload["zone"]
-        }, self.mqtt_client.get_referentials())
+        temperature_request = replace_keys(
+            {
+                "controller": payload["controller"] if "controller" in payload else 0,
+                "data": {"setpoint_used": temperature},
+                "type": "REQ_TH",
+                "zone": payload["zone"],
+            },
+            self.mqtt_client.get_referentials(),
+        )
 
         installation_unique = self.get_installation_unique_by_zone(payload["zone"])
-        return self.mqtt_client.send_message("$client/{}".format(installation_unique), temperature_request)
+        return self.mqtt_client.send_message(
+            f"$client/{installation_unique}", temperature_request
+        )
 
     def get_energy_level(self, zone: int) -> EnergyLevels:
+        """Retrieve the energy level for a specific zone.
+
+        Args:
+            zone (int): The zone number.
+
+        Returns:
+            EnergyLevels: The energy level.
+
+        Raises:
+            MqttClientError: If no zone is found for the given zone number.
+        """
         energy_level = self.get_zone_value_by_key("energy_level", zone)
         return EnergyLevels(energy_level)
 
     def set_energy_level(self, payload: dict):
+        """Set the energy level for a specific zone.
+
+        Args:
+            payload (dict): The payload containing the mode and zone information.
+
+        Returns:
+            Any: The result of the message sending operation.
+
+        Raises:
+            MqttClientError: If the mode or zone is not found in the payload.
+        """
         if "mode" not in payload:
-            raise Exception("No mode found in payload")
+            raise MqttClientError("No mode found in payload")
 
         if "zone" not in payload:
-            raise Exception("No zone found in payload")
+            raise MqttClientError("No zone found in payload")
 
-        energy_level_request = replace_keys({
-            "controller": payload["controller"] if "controller" in payload else 0,
-            "data": {"mode_permanent": payload["mode"]},
-            "type": "REQ_TH",
-            "zone": payload["zone"]
-        }, self.mqtt_client.get_referentials())
+        energy_level_request = replace_keys(
+            {
+                "controller": payload["controller"] if "controller" in payload else 0,
+                "data": {"mode_permanent": payload["mode"]},
+                "type": "REQ_TH",
+                "zone": payload["zone"],
+            },
+            self.mqtt_client.get_referentials(),
+        )
 
         installation_unique = self.get_installation_unique_by_zone(payload["zone"])
-        return self.mqtt_client.send_message("$client/{}".format(installation_unique), energy_level_request)
+        return self.mqtt_client.send_message(
+            f"$client/{installation_unique}", energy_level_request
+        )
 
-    def get_global_energy_level(self):
+    def get_global_energy_level(self) -> EnergyLevels:
+        """Retrieve the global energy level.
+
+        Returns:
+            Any: The global energy level.
+
+        Raises:
+            MqttClientError: If no installations are found.
+        """
         self.installations = self.get_installations_as_dict()
         return self.installations[0]["global_energy_level"]
 
     def set_global_energy_level(self, payload: dict):
+        """Set the global energy level.
+
+        Args:
+            payload (dict): The payload containing the mode information.
+
+        Returns:
+            Any: The result of the message sending operation.
+
+        Raises:
+            MqttClientError: If the mode is not found in the payload.
+        """
         if "mode" not in payload:
-            raise Exception("No mode found in payload")
+            raise MqttClientError("No mode found in payload")
 
         zones = {}
         for installation in self.get_installations_as_dict():
@@ -135,36 +285,76 @@ class Controller:
                     zones[installation["unique"]].append(zone["number"])
 
         for installation_unique, zones in zones.items():
-            global_energy_level_request = replace_keys({
-                "controller": payload["controller"] if "controller" in payload else 0,
-                "data": {"mode_used": payload["mode"], "zone_impacted": zones},
-                "type": "REQ_TH",
-            }, self.mqtt_client.get_referentials())
+            global_energy_level_request = replace_keys(
+                {
+                    "controller": payload["controller"]
+                    if "controller" in payload
+                    else 0,
+                    "data": {"mode_used": payload["mode"], "zone_impacted": zones},
+                    "type": "REQ_TH",
+                },
+                self.mqtt_client.get_referentials(),
+            )
 
-            return self.mqtt_client.send_message("$client/{}".format(installation_unique), global_energy_level_request)
+            return self.mqtt_client.send_message(
+                f"$client/{installation_unique}", global_energy_level_request
+            )
 
     def get_operation_mode(self) -> OperationModes:
+        """Retrieve the operation mode.
+
+        Returns:
+            OperationModes: The operation mode.
+
+        Raises:
+            MqttClientError: If no installations are found.
+        """
         installation = self.get_installations_as_dict()[0]
         return OperationModes(installation["operating_mode"])
 
     def set_operation_mode(self, payload: dict):
+        """Set the operation mode.
+
+        Args:
+            payload (dict): The payload containing the mode information.
+
+        Returns:
+            Any: The result of the message sending operation.
+
+        Raises:
+            MqttClientError: If the mode is not found in the payload.
+        """
         if "mode" not in payload:
-            raise Exception("No mode found in payload")
+            raise MqttClientError("No mode found in payload")
 
         # mode to string with 0 padding
         payload["mode"] = str(payload["mode"]).zfill(2)
 
-        operation_mode_request = replace_keys({
-            "data": {"heat_cool": payload["mode"]},
-            "type": "REQ_TH",
-        }, self.mqtt_client.get_referentials())
+        operation_mode_request = replace_keys(
+            {
+                "data": {"heat_cool": payload["mode"]},
+                "type": "REQ_TH",
+            },
+            self.mqtt_client.get_referentials(),
+        )
 
         if "unique" in payload:
             installation_unique = payload["unique"]
         else:
             installation_unique = self.get_installation_unique_by_zone(payload["zone"])
-        return self.mqtt_client.send_message("$client/{}".format(installation_unique), operation_mode_request)
+        return self.mqtt_client.send_message(
+            f"$client/{installation_unique}", operation_mode_request
+        )
 
-    async def is_connected(self):
-        while not self.mqtt_client.is_authenticated() or self.get_installations() is None:
+    async def is_connected(self) -> bool:
+        """Check if the controller is connected to the MQTT broker.
+
+        Returns:
+            bool: True if connected, False otherwise.
+        """
+        while (
+            not self.mqtt_client.is_authenticated() or self.get_installations() is None
+        ):
             pass
+
+        return True

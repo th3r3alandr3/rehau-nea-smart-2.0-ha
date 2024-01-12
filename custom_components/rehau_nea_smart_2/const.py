@@ -4,14 +4,17 @@ from homeassistant.components.climate import (
     HVACMode,
 )
 
-from .mqtt.utils.helpers import (EnergyLevels, OperationModes)
+from .mqtt import (
+    EnergyLevels,
+    OperationModes
+)
 
 LOGGER: Logger = getLogger(__package__)
 
 NAME = "Rehua Nea Smart 2.0"
 DOMAIN = "rehau_nea_smart_2"
-VERSION = "0.0.0"
-ATTRIBUTION = "Data provided by http://jsonplaceholder.typicode.com/"
+VERSION = "0.1.0"
+ATTRIBUTION = "Data provided by REHAU Nea Smart 2.0 Mqtt API"
 
 PRESET_ENERGY_LEVELS_MAPPING = {
     "normal": EnergyLevels.PRESENT_MODE.value,
@@ -37,7 +40,6 @@ PRESET_OPERATING_MODES_MAPPING = {
 PRESET_OPERATING_MODES_MAPPING_REVERSE = {
     v: k for k, v in PRESET_OPERATING_MODES_MAPPING.items()
 }
-
 
 PRESET_CLIMATE_MODES_MAPPING = {
     OperationModes.AUTO.value: HVACMode.AUTO,

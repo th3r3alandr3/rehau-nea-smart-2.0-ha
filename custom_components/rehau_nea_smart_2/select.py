@@ -7,11 +7,11 @@ from homeassistant.components.select import SelectEntity, SelectEntityDescriptio
 from homeassistant.helpers.restore_state import RestoreEntity
 from homeassistant.helpers.entity import DeviceInfo
 
-from .mqtt.types.installation import Installation
+from .mqtt import Installation
 
-from .const import DOMAIN, PRESET_OPERATING_MODES_MAPPING, PRESET_ENERGY_LEVELS_MAPPING, PRESET_OPERATING_MODES_MAPPING_REVERSE, PRESET_ENERGY_LEVELS_MAPPING_REVERSE
+from .const import DOMAIN, PRESET_OPERATING_MODES_MAPPING, PRESET_ENERGY_LEVELS_MAPPING, \
+    PRESET_OPERATING_MODES_MAPPING_REVERSE, PRESET_ENERGY_LEVELS_MAPPING_REVERSE
 from .coordinator import RehauNeaSmart2DataUpdateCoordinator
-from .entity import IntegrationRehauNeaSmart2Entity
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -36,8 +36,10 @@ async def async_setup_entry(hass, entry, async_add_devices):
     devices = []
 
     for entity_description in ENTITY_DESCRIPTIONS:
-        devices.append(RehauNeaSmart2OperationModeSelect(coordinator, entity_description, operation_mode, unique=installation.unique))
-        devices.append(RehauNeaSmart2OperationEnergyLevelSelect(coordinator, entity_description, energy_level, unique=installation.unique))
+        devices.append(RehauNeaSmart2OperationModeSelect(coordinator, entity_description, operation_mode,
+                                                         unique=installation.unique))
+        devices.append(RehauNeaSmart2OperationEnergyLevelSelect(coordinator, entity_description, energy_level,
+                                                                unique=installation.unique))
 
     async_add_devices(devices)
 
@@ -83,9 +85,10 @@ class RehauNeaSmart2GenericSelect(SelectEntity, RestoreEntity):
 class RehauNeaSmart2OperationModeSelect(RehauNeaSmart2GenericSelect):
     """Operation Mode Select class for rehau_nea_smart_2."""
 
-    def __init__(self, coordinator: RehauNeaSmart2DataUpdateCoordinator, entity_description: SelectEntityDescription, operation_mode: str, unique: str):
+    def __init__(self, coordinator: RehauNeaSmart2DataUpdateCoordinator, entity_description: SelectEntityDescription,
+                 operation_mode: str, unique: str):
         """Initialize the Operation Mode Select class."""
-        super().__init__(coordinator, "climate_mode",  unique)
+        super().__init__(coordinator, "climate_mode", unique)
         self._attr_unique_id = f"{self._coordinator.id}_operation_climate_mode"
         self._attr_name = "Climate Mode"
         self.entity_description = entity_description
@@ -95,7 +98,7 @@ class RehauNeaSmart2OperationModeSelect(RehauNeaSmart2GenericSelect):
     async def async_select_option(self, mode: str) -> None:
         """Select an operation mode."""
         mode = PRESET_OPERATING_MODES_MAPPING[mode]
-        print(f"Setting operation mode to {mode}")
+        _LOGGER.debug(f"Setting operation mode to {mode}")
         if not self._coordinator.set_operation_mode_global(self._unique, mode):
             _LOGGER.error(f"Error configuring {mode} operation climate mode")
 
@@ -114,7 +117,8 @@ class RehauNeaSmart2OperationModeSelect(RehauNeaSmart2GenericSelect):
 class RehauNeaSmart2OperationEnergyLevelSelect(RehauNeaSmart2GenericSelect):
     """Operation Energy Level Select class for rehau_nea_smart_2."""
 
-    def __init__(self, coordinator: RehauNeaSmart2DataUpdateCoordinator, entity_description: SelectEntityDescription, energy_level: str, unique: str):
+    def __init__(self, coordinator: RehauNeaSmart2DataUpdateCoordinator, entity_description: SelectEntityDescription,
+                 energy_level: str, unique: str):
         """Initialize the Operation Energy Level Select class."""
         super().__init__(coordinator, "energy_level", unique)
         self._attr_unique_id = f"{self._coordinator.id}_energy_level"
@@ -126,7 +130,7 @@ class RehauNeaSmart2OperationEnergyLevelSelect(RehauNeaSmart2GenericSelect):
     async def async_select_option(self, energy_level: str) -> None:
         """Select an energy level."""
         energy_level = PRESET_ENERGY_LEVELS_MAPPING[energy_level]
-        print(f"Setting energy level to {energy_level}")
+        _LOGGER.debug(f"Setting energy level to {energy_level}")
         if not self._coordinator.set_global_energy_level(energy_level):
             _LOGGER.error(f"Error configuring {energy_level} energy level")
 
