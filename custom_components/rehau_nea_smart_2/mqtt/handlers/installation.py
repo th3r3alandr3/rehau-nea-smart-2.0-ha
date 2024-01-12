@@ -60,3 +60,38 @@ def parse_installations(installations) -> list[Installation]:
     save_as_json(installations_data, "installations.json")
 
     return installations_data
+
+
+def update_temperature(installations: list[Installation], zone_number: str, temperature: float) -> list[Installation]:
+    """Update temperature."""
+    for installation in installations:
+        for group in installation["groups"]:
+            for zone in group["zones"]:
+                if zone["number"] == zone_number:
+                    for channel in zone["channels"]:
+                        channel["target_temperature"] = temperature
+
+    return installations
+
+def update_energy_level(installations: list[Installation], zone_number: str, energy_level: int) -> list[Installation]:
+    """Update energy level."""
+    for installation in installations:
+        for group in installation["groups"]:
+            for zone in group["zones"]:
+                if zone["number"] == zone_number:
+                    for channel in zone["channels"]:
+                        channel["energy_level"] = energy_level
+
+    return installations
+
+def update_operating_mode(installations: list[Installation], unique: str, operating_mode: str) -> list[Installation]:
+    """Update operating mode."""
+    for installation in installations:
+        if installation["unique"] == unique:
+            installation["operating_mode"] = operating_mode
+        for group in installation["groups"]:
+            for zone in group["zones"]:
+                for channel in zone["channels"]:
+                    channel["operating_mode"] = operating_mode
+
+    return installations

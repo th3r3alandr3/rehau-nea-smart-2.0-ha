@@ -17,8 +17,6 @@ _LOGGER = logging.getLogger(__name__)
 async def auth(hass: HomeAssistant, email, password, check_credentials=False):
     """Authenticate with Rehau NEA Smart 2."""
 
-    _LOGGER.debug("Authenticating with Rehau NEA Smart 2", email, password, check_credentials)
-
     challenge = secrets.token_urlsafe(16)
     url = await generate_auth_url(
         "3f5d915d-a06f-42b9-89cc-2e5d63aa96f1",
@@ -50,9 +48,9 @@ async def auth(hass: HomeAssistant, email, password, check_credentials=False):
         }, allow_redirects=False))
 
     if not response.is_redirect:
+        _LOGGER.error("No redirect found")
         if check_credentials:
             return False
-        _LOGGER.error("No redirect found")
         raise MqttClientAuthenticationError("No redirect found")
 
     redirect_url = response.headers["Location"]
@@ -62,9 +60,9 @@ async def auth(hass: HomeAssistant, email, password, check_credentials=False):
         queries[key] = queries[key][0]
 
     if "code" not in queries:
+        _LOGGER.error("No code found")
         if check_credentials:
             return False
-        _LOGGER.error("No code found")
         raise MqttClientAuthenticationError("No code found")
 
     token_response = await hass.async_add_executor_job(
@@ -77,9 +75,9 @@ async def auth(hass: HomeAssistant, email, password, check_credentials=False):
         }, allow_redirects=False))
 
     if token_response.status_code != 200:
+        _LOGGER.error("Could not get token")
         if check_credentials:
             return False
-        _LOGGER.error("Could not get token")
         raise MqttClientAuthenticationError("Could not get token")
 
     if check_credentials:
@@ -87,5 +85,4 @@ async def auth(hass: HomeAssistant, email, password, check_credentials=False):
 
     token_data = token_response.json()
 
-    _LOGGER.debug("Authenticated with Rehau NEA Smart 2")
     return token_data

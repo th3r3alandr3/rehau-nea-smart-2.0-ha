@@ -1,7 +1,9 @@
 """Controller module for the REHAU NEA SMART 2 integration."""
+import asyncio
 from homeassistant.core import HomeAssistant
 
 from .utils import replace_keys, EnergyLevels, OperationModes
+from .handlers import update_temperature, update_energy_level, update_operating_mode
 from .models import Installation, Zone
 from .MqttClient import MqttClient
 from .exceptions import MqttClientError
@@ -187,15 +189,19 @@ class Controller:
         if "unit" not in payload or payload["unit"] == "C":
             temperature = temperature * 1.8 + 320
 
+        int_temperature = int(temperature)
+
         temperature_request = replace_keys(
             {
                 "controller": payload["controller"] if "controller" in payload else 0,
-                "data": {"setpoint_used": temperature},
+                "data": {"setpoint_used": int_temperature},
                 "type": "REQ_TH",
                 "zone": payload["zone"],
             },
             self.mqtt_client.get_referentials(),
         )
+
+        update_temperature(self.get_installations_as_dict(), payload["zone"], int_temperature)
 
         installation_unique = self.get_installation_unique_by_zone(payload["zone"])
         return self.mqtt_client.send_message(
@@ -244,6 +250,8 @@ class Controller:
             },
             self.mqtt_client.get_referentials(),
         )
+
+        update_energy_level(self.get_installations_as_dict(), payload["zone"], payload["mode"])
 
         installation_unique = self.get_installation_unique_by_zone(payload["zone"])
         return self.mqtt_client.send_message(
@@ -338,10 +346,15 @@ class Controller:
             self.mqtt_client.get_referentials(),
         )
 
+
+
         if "unique" in payload:
             installation_unique = payload["unique"]
         else:
             installation_unique = self.get_installation_unique_by_zone(payload["zone"])
+
+
+        update_operating_mode(self.get_installations_as_dict(), installation_unique, payload["mode"])
         return self.mqtt_client.send_message(
             f"$client/{installation_unique}", operation_mode_request
         )

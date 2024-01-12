@@ -29,6 +29,10 @@ PRESET_ENERGY_LEVELS_MAPPING_REVERSE = {
     v: k for k, v in PRESET_ENERGY_LEVELS_MAPPING.items()
 }
 
+custom_mappings = {4: "auto", 5: "auto", 6: "party"}
+PRESET_ENERGY_LEVELS_MAPPING_REVERSE.update(custom_mappings)
+
+
 PRESET_OPERATING_MODES_MAPPING = {
     "auto": OperationModes.AUTO.value,
     "heating": OperationModes.HEATING_ONLY.value,
