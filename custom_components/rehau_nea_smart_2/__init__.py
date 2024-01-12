@@ -5,7 +5,7 @@ https://github.com/ludeeus/rehau_nea_smart_2
 """
 from __future__ import annotations
 
-from homeassistant.config_entries import ConfigEntry
+from homeassistant.config_entries import ConfigEntry, ConfigEntryNotReady
 from homeassistant.const import CONF_EMAIL, CONF_PASSWORD, Platform
 from homeassistant.core import HomeAssistant
 
@@ -23,16 +23,20 @@ PLATFORMS: list[Platform] = [
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Set up this integration using UI."""
     hass.data.setdefault(DOMAIN, {})
-    controller = Controller(hass, entry.data[CONF_EMAIL], entry.data[CONF_PASSWORD])
-    await controller.connect()
-    hass.data[DOMAIN][f"{entry.entry_id}_controller"] = controller
+    if f"{entry.entry_id}_controller" not in hass.data[DOMAIN]:
+        controller = Controller(hass, entry.data[CONF_EMAIL], entry.data[CONF_PASSWORD])
+        await controller.connect()
+        hass.data[DOMAIN][f"{entry.entry_id}_controller"] = controller
+    else:
+        controller = hass.data[DOMAIN][f"{entry.entry_id}_controller"]
     hass.data[DOMAIN][entry.entry_id] = coordinator = RehauNeaSmart2DataUpdateCoordinator(
         hass=hass,
         sysname="REHAU NEA SMART 2.0",
         controller=controller,
     )
     # https://developers.home-assistant.io/docs/integration_fetching_data#coordinated-single-api-poll-for-data-for-all-entities
-    await controller.is_connected()
+    if not controller.is_ready():
+        raise ConfigEntryNotReady
     await coordinator.async_config_entry_first_refresh()
 
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)

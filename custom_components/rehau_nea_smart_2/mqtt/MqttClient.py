@@ -71,6 +71,14 @@ class MqttClient:
         """
         return self.authenticated
 
+    def is_ready(self):
+        """Check if the MQTT client is ready.
+
+        Returns:
+            bool: True if ready, False otherwise.
+        """
+        return self.user is not None and self.installations is not None
+
     def on_connect(self, client, userdata, flags, rc):
         """Log the result code when the client connects to the MQTT broker.
 

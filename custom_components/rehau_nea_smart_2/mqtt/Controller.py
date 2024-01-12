@@ -359,15 +359,10 @@ class Controller:
             f"$client/{installation_unique}", operation_mode_request
         )
 
-    async def is_connected(self) -> bool:
+    def is_ready(self) -> bool:
         """Check if the controller is connected to the MQTT broker.
 
         Returns:
             bool: True if connected, False otherwise.
         """
-        while (
-            not self.mqtt_client.is_authenticated() or self.get_installations() is None
-        ):
-            pass
-
-        return True
+        return self.mqtt_client.is_ready()
