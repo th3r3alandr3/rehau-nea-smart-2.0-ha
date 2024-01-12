@@ -72,6 +72,7 @@ def handle_user_auth(message: dict, client):
     client.authenticated = True
     client.request_server_referentials()
     client.refresh()
+    client.start_scheduler_thread()
 
 
 def handle_channel_update(message, client):

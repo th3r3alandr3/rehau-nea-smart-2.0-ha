@@ -1,9 +1,9 @@
-"""MQTT client for the Rehau NEA Smart 2 integration."""
-
 import json
 import paho.mqtt.client as mqtt
 import threading
 import logging
+import schedule
+import time
 
 from .utils import generate_uuid
 from .handlers import handle_message, auth, handle_refresh
@@ -14,7 +14,6 @@ from .exceptions import (
 )
 
 _LOGGER = logging.getLogger(__name__)
-
 
 class MqttClient:
     """MQTT client for the Rehau NEA Smart 2 integration."""
@@ -42,6 +41,8 @@ class MqttClient:
         self.client = None
         self.topics = [{"topic": "$client/app", "options": {}}]
         self.refresh_in_process = False
+        self.stop_scheduler = False
+        self.scheduler_thread = None
         self.init_mqtt_client()
 
     async def check_credentials(self, email, password):
@@ -140,7 +141,6 @@ class MqttClient:
         self.refresh_in_process = True
         self.send_topics()
         self.read_user()
-        threading.Timer(60, self.refresh).start()
 
     def send_topics(self):
         """Subscribe to the configured topics."""
@@ -181,6 +181,8 @@ class MqttClient:
             self.client.unsubscribe(topic["topic"])
         self.client.disconnect()
         self.client.loop_stop()
+        if self.scheduler_thread is not None:
+            self.stop_scheduler_thread()
         _LOGGER.debug("Disconnected")
 
     def init_mqtt_client(self):
@@ -224,23 +226,12 @@ class MqttClient:
         else:
             self.auth_user()
 
-    def refresh_timer(self, expires_in):
-        """Start a timer to refresh the authentication token.
-
-        Args:
-            expires_in: The number of seconds until the token expires.
-        """
-        _LOGGER.debug("Refreshing token in " + str(expires_in) + " seconds")
-        threading.Timer(expires_in, self.refresh_token).start()
-
     def set_token_data(self, token_data):
         """Set the authentication token data and start the refresh timer.
 
         Args:
             token_data: The token data.
         """
-        expires_in = token_data["expires_in"] - 60
-        threading.Thread(target=self.refresh_timer, args=(expires_in,)).start()
         self.token_data = token_data
 
     def get_installations(self):
@@ -324,3 +315,30 @@ class MqttClient:
                         return
 
         raise MqttClientError("No channel found for id " + channel_id)
+
+    def start_scheduler(self):
+        """Start the scheduler to run periodic tasks."""
+        _LOGGER.debug("Starting scheduler thread")
+        schedule.every(60).seconds.do(self.refresh).tag("refresh")
+        schedule.every(300).seconds.do(self.request_server_referentials).tag("referentials")
+        if "access_token" in self.token_data:
+            _LOGGER.debug("Scheduling token refresh")
+            expires_in = self.token_data["expires_in"] - 300
+            schedule.every(expires_in).seconds.do(self.refresh_token).tag("token")
+        else:
+            _LOGGER.error("No access token found")
+
+        while not self.stop_scheduler:
+            schedule.run_pending()
+            time.sleep(1)
+
+    def start_scheduler_thread(self):
+        """Start the scheduler in a separate thread."""
+        self.scheduler_thread = threading.Thread(target=self.start_scheduler, name="Rehau NEA Smart 2 Scheduler")
+        self.scheduler_thread.start()
+
+    def stop_scheduler_thread(self):
+        """Stop the scheduler thread."""
+        self.stop_scheduler = True
+        self.scheduler_thread.join()
+
