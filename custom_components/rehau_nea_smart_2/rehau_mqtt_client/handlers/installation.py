@@ -4,6 +4,7 @@ from ..utils import parse_operating_mode, get_global_energy_level, save_as_json
 import datetime
 
 def is_installation_connected(installation) -> bool:
+    """Check if installation is connected."""
     if 'lastConnection' in installation and 'connectionState' in installation:
         last_connection = installation['lastConnection']
         connection_state = installation['connectionState']
