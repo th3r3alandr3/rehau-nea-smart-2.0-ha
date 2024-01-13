@@ -50,24 +50,6 @@ async def async_setup_entry(hass, entry, async_add_devices):
     async_add_devices(devices)
 
 
-class IntegrationRehauNeaSmart2Sensor(IntegrationRehauNeaSmart2Entity, SensorEntity):
-    """rehau_nea_smart_2 Sensor class."""
-
-    def __init__(
-            self,
-            coordinator: RehauNeaSmart2DataUpdateCoordinator,
-            entity_description: SensorEntityDescription,
-    ) -> None:
-        """Initialize the sensor class."""
-        super().__init__(coordinator)
-        self.entity_description = entity_description
-
-    @property
-    def native_value(self) -> str:
-        """Return the native value of the sensor."""
-        return "15"
-
-
 class RehauNeasmartGenericSensor(SensorEntity, RestoreEntity):
     """Generic sensor class for Rehau Neasmart."""
 
@@ -117,7 +99,7 @@ class RehauNeasmart2TemperatureSensor(RehauNeasmartGenericSensor):
     ):
         """Initialize the temperature sensor class."""
         super().__init__(coordinator, zone)
-        self._attr_unique_id = f"{self._zone}_temperature"
+        self._attr_unique_id = f"{self._name}_temperature"
         self._attr_name = f"{self._name} Temperature"
         self.entity_description = entity_description
 

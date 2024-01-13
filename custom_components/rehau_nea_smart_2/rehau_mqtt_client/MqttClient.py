@@ -42,7 +42,7 @@ class MqttClient:
         self.client = None
         self.topics = [{"topic": "$client/app", "options": {}}]
         self.refresh_in_process = False
-        self.stop_scheduler = False
+        self.stop_scheduler_loop = False
         self.scheduler_thread = None
         self.init_mqtt_client()
 
@@ -169,7 +169,7 @@ class MqttClient:
         _LOGGER.debug(f"Sending message {topic}: {json_message}")
         result, mid = self.client.publish(topic, payload=json_message)
         if result != mqtt.MQTT_ERR_SUCCESS:
-            raise MqttClientCommunicationError("Failed to send message")
+            _LOGGER.error(f"Error sending message {topic}: {json_message}")
 
         return mid
 
@@ -331,9 +331,18 @@ class MqttClient:
         else:
             _LOGGER.error("No access token found")
 
-        while not self.stop_scheduler:
+        while not self.stop_scheduler_loop:
             schedule.run_pending()
             time.sleep(1)
+
+
+    def stop_scheduler(self):
+        """Stop the scheduler."""
+        _LOGGER.debug("Stopping scheduler")
+        schedule.clear("refresh")
+        schedule.clear("referentials")
+        schedule.clear("token")
+        self.stop_scheduler_loop = True
 
     def start_scheduler_thread(self):
         """Start the scheduler in a separate thread."""
@@ -342,6 +351,6 @@ class MqttClient:
 
     def stop_scheduler_thread(self):
         """Stop the scheduler thread."""
-        self.stop_scheduler = True
+        self.stop_scheduler()
         self.scheduler_thread.join()
 
