@@ -138,9 +138,19 @@ class RehauNeaSmart2RoomClimate(IntegrationRehauNeaSmart2Climate):
         self._attr_max_temp = self.format_temperature(self._max_temp)
         self._attr_min_temp = self.format_temperature(self._min_temp)
 
-    def format_temperature(self, temperature):
+    def format_temperature(self, temperature, round_half=False) -> float:
         """Format the temperature."""
-        return round((temperature / 10 - 32) / 1.8, 1)
+        converted_temperature = (temperature / 10 - 32) / 1.8
+
+        if round_half:
+            rounded_temperature = round(converted_temperature)
+            if converted_temperature % 1 == 0.5:
+                return float(f"{int(rounded_temperature)}.5")
+            else:
+                return float(rounded_temperature)
+        else:
+            return round(converted_temperature, 1)
+
 
     async def async_update(self) -> None:
         """Update the state of the climate entity."""
