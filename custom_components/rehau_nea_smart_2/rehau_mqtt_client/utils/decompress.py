@@ -1,5 +1,5 @@
 """Decompression utilities for Rehau NEA Smart 2."""
-from lzstring import LZString
+from .lzstring import LZString
 import json
 import base64
 
