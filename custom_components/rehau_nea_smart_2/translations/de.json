@@ -1,54 +1,58 @@
 {
-    "config": {
-        "flow_title": "Rehau Nea Smart 2",
-        "step": {
-            "user": {
-                "description": "Geben Sie die API-URL ein",
-                "data": {
-                    "url": "URL"
-                }
-            }
-        },
-        "error": {
-            "auth": "Benutzername/Passwort ist falsch.",
-            "connection": "Verbindung zum Server konnte nicht hergestellt werden.",
-            "unknown": "Unbekannter Fehler ist aufgetreten."
+  "config": {
+    "flow_title": "Rehau Nea Smart 2",
+    "step": {
+      "user": {
+        "description": "Bitte geben Sie Ihre Benutzerdaten ein.",
+        "data": {
+          "email": "E-Mail",
+          "password": "Passwort"
         }
+      }
     },
-    "entity": {
-        "climate": {
-            "rehauneasmart2": {
-                "state_attributes": {
-                    "preset_mode": {
-                        "state": {
-                            "Normal": "Normal",
-                            "Reduced": "Reduziert",
-                            "Standby": "Standby",
-                            "Party": "Party"
-                        }
-                    }
-                }
-            }
-        },
-        "select": {
-            "climate_mode": {
-                "state": {
-                    "Heating": "Heizen",
-                    "Cooling": "Kühlen",
-                    "Heating and Cooling": "Auto",
-                    "Manual Heating": "Manuelles Heizen",
-                    "Manual Cooling": "Manuelles Kühlen"
-                }
-            },
-            "energy_level": {
-                "state": {
-                    "Normal": "Normal",
-                    "Reduced": "Reduziert",
-                    "Standby": "Standby",
-                    "Auto": "Auto",
-                    "Vacation": "Urlaub"
-                }
-            }
-        }
+    "error": {
+      "auth": "Benutzername/Passwort ist falsch.",
+      "connection": "Verbindung zum Server konnte nicht hergestellt werden.",
+      "unknown": "Unbekannter Fehler ist aufgetreten."
     }
+  },
+  "entity": {
+    "climate": {
+      "rehauneasmart2": {
+        "state_attributes": {
+          "preset_mode": {
+            "state": {
+              "normal": "Normal",
+              "reduced": "Reduziert",
+              "standby": "Standby",
+              "party": "Party",
+              "auto": "Auto",
+              "vacation": "Urlaub"
+            }
+          }
+        }
+      }
+    },
+    "select": {
+      "climate_mode": {
+        "state": {
+          "heating": "Heizen",
+          "cooling": "Kühlen",
+          "auto": "Auto",
+          "manual_heating": "Manuelles Heizen",
+          "manual_cooling": "Manuelles Kühlen"
+        }
+      },
+      "energy_level": {
+        "state": {
+          "normal": "Normal",
+          "reduced": "Reduziert",
+          "standby": "Standby",
+          "party": "Party",
+          "auto": "Auto",
+          "vacation": "Urlaub"
+        }
+      }
+    }
+  }
 }
