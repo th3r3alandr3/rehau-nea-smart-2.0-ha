@@ -12,7 +12,7 @@ from homeassistant.helpers.update_coordinator import (
 )
 from homeassistant.exceptions import ConfigEntryAuthFailed
 
-from .mqtt import (
+from .rehau_mqtt_client import (
     MqttClientAuthenticationError,
     MqttClientError,
     Installation,

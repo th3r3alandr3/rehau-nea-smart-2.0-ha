@@ -6,7 +6,7 @@ from homeassistant import config_entries
 from homeassistant.const import CONF_EMAIL, CONF_PASSWORD
 from homeassistant.helpers import selector
 
-from .mqtt import (
+from .rehau_mqtt_client import (
     MqttClientAuthenticationError,
     MqttClientCommunicationError,
     MqttClientError,

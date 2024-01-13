@@ -7,7 +7,7 @@ from homeassistant.components.select import SelectEntity, SelectEntityDescriptio
 from homeassistant.helpers.restore_state import RestoreEntity
 from homeassistant.helpers.entity import DeviceInfo
 
-from .mqtt import Installation
+from .rehau_mqtt_client import Installation
 
 from .const import DOMAIN, PRESET_OPERATING_MODES_MAPPING, PRESET_ENERGY_LEVELS_MAPPING, \
     PRESET_OPERATING_MODES_MAPPING_REVERSE, PRESET_ENERGY_LEVELS_MAPPING_REVERSE

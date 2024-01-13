@@ -4,7 +4,7 @@ from homeassistant.components.climate import (
     HVACMode,
 )
 
-from .mqtt import (
+from .rehau_mqtt_client import (
     EnergyLevels,
     OperationModes
 )

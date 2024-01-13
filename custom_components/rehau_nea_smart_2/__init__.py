@@ -9,7 +9,7 @@ from homeassistant.config_entries import ConfigEntry, ConfigEntryNotReady
 from homeassistant.const import CONF_EMAIL, CONF_PASSWORD, Platform
 from homeassistant.core import HomeAssistant
 
-from .mqtt.Controller import Controller
+from .rehau_mqtt_client.Controller import Controller
 from .const import DOMAIN
 from .coordinator import RehauNeaSmart2DataUpdateCoordinator
 

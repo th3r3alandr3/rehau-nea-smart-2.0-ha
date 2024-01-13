@@ -3,7 +3,7 @@ import logging
 from .coordinator import (
     RehauNeaSmart2DataUpdateCoordinator,
 )
-from .mqtt import Installation, Zone
+from .rehau_mqtt_client import Installation, Zone
 from .const import (
     DOMAIN,
     NAME,
