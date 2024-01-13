@@ -76,10 +76,6 @@ class RehauNeaSmart2FlowHandler(config_entries.ConfigFlow, domain=DOMAIN):
     async def _test_credentials(self, email: str, password: str) -> None:
         """Validate credentials."""
         try:
-            result = await MqttClient.check_credentials(email=email, password=password, hass=self.hass)
-            print(result)
-            print("Connected to REHAU Nea Smart 2.0 API")
+            await MqttClient.check_credentials(email=email, password=password, hass=self.hass)
         except Exception as exception:
-            print(exception)
-            print("Could not connect to REHAU Nea Smart 2.0 API")
             raise MqttClientAuthenticationError from exception

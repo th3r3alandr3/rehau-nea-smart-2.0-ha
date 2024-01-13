@@ -1,3 +1,4 @@
+"""Set up the Rehau MQTT client."""
 from setuptools import setup, find_packages
 
 setup(

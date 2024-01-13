@@ -1,3 +1,4 @@
+"""MQTT client for the Rehau NEA Smart 2 integration."""
 import json
 import paho.mqtt.client as mqtt
 import threading
@@ -52,6 +53,7 @@ class MqttClient:
         Args:
             email: The user's email.
             password: The user's password.
+            hass: The Home Assistant instance.
 
         Returns:
             bool: True if the credentials are valid, False otherwise.
