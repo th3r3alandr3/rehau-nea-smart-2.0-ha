@@ -43,7 +43,7 @@ async def async_setup_entry(hass, entry, async_add_devices):
                 for zone in group.zones:
                     devices.append(
                         RehauNeasmart2TemperatureSensor(
-                            coordinator, zone, installation.unique entity_description
+                            coordinator, zone, installation.unique, entity_description
                         )
                     )
 
