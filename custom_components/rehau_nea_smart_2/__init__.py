@@ -47,9 +47,10 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
 async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Handle removal of an entry."""
-    controller: Controller = hass.data[DOMAIN][f"{entry.entry_id}_controller"]
-    await controller.disconnect()
     if unloaded := await hass.config_entries.async_unload_platforms(entry, PLATFORMS):
+        controller: Controller = hass.data[DOMAIN][f"{entry.entry_id}_controller"]
+        await controller.disconnect()
+        hass.data[DOMAIN].pop(f"{entry.entry_id}_controller")
         hass.data[DOMAIN].pop(entry.entry_id)
     return unloaded
 

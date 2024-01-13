@@ -45,7 +45,8 @@ class MqttClient:
         self.scheduler_thread = None
         self.init_mqtt_client()
 
-    async def check_credentials(self, email, password):
+    @staticmethod
+    async def check_credentials(email, password, hass):
         """Check if the provided credentials are valid.
 
         Args:
@@ -58,7 +59,7 @@ class MqttClient:
         Raises:
             MqttClientAuthenticationError: If the credentials are invalid.
         """
-        valid = await auth(self.hass, email, password, True)
+        valid = await auth(hass, email, password, True)
         if valid:
             return True
 
