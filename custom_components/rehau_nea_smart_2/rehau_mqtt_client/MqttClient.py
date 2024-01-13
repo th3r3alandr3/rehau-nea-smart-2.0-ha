@@ -18,6 +18,7 @@ _LOGGER = logging.getLogger(__name__)
 
 class MqttClient:
     """MQTT client for the Rehau NEA Smart 2 integration."""
+    MAX_CONNECT_RETRIES = 5
 
     def __init__(self, hass, username, password):
         """Initialize the MQTT client.
@@ -44,6 +45,7 @@ class MqttClient:
         self.refresh_in_process = False
         self.stop_scheduler_loop = False
         self.scheduler_thread = None
+        self.number_of_retries = 0
         self.init_mqtt_client()
 
     @staticmethod
@@ -113,7 +115,12 @@ class MqttClient:
             rc: The result code.
         """
         if rc != 0:
-            _LOGGER.error("Unexpected disconnection.")
+            self.number_of_retries += 1
+            if self.number_of_retries <= self.MAX_CONNECT_RETRIES:
+                _LOGGER.error("Unexpected disconnection. Retrying...")
+            else:
+                _LOGGER.error("Unexpected disconnection. Stopping...")
+                self.disconnect()
 
     def set_install_id(self):
         """Set the installation ID based on the user's default installation."""
@@ -142,6 +149,7 @@ class MqttClient:
             return
 
         self.refresh_in_process = True
+        self.number_of_retries = 0
         self.send_topics()
         self.read_user()
 
@@ -199,6 +207,8 @@ class MqttClient:
         self.client.on_connect = self.on_connect
         self.client.on_message = self.on_message
         self.client.on_disconnect = self.on_disconnect
+        self.client.enable_logger(logger=_LOGGER)
+        self.client.reconnect_delay_set(min_delay=30, max_delay=300)
         self.client.connect("iot.neasmart2.app.rehau.com", 8094)
         self.send_topics()
         self.start_mqtt_client()

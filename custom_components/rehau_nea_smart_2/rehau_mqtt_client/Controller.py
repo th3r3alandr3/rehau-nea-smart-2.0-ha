@@ -31,6 +31,15 @@ class Controller:
         """Disconnect from the MQTT broker."""
         self.mqtt_client.disconnect()
 
+    def is_connected(self, installation_unique: str):
+        Installations = self.get_installations_as_dict()
+        if Installations is None:
+            return False
+        for installation in Installations:
+            if installation["unique"] == installation_unique:
+                return installation["connected"]
+
+
     def is_authenticated(self):
         """Check if the user is authenticated.
 

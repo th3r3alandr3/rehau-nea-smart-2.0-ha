@@ -43,7 +43,7 @@ async def async_setup_entry(hass, entry, async_add_devices):
                 for zone in group.zones:
                     devices.append(
                         RehauNeasmart2TemperatureSensor(
-                            coordinator, zone, entity_description
+                            coordinator, zone, installation.unique entity_description
                         )
                     )
 
@@ -55,13 +55,15 @@ class RehauNeasmartGenericSensor(SensorEntity, RestoreEntity):
 
     _attr_has_entity_name = False
 
-    def __init__(self, coordinator: RehauNeaSmart2DataUpdateCoordinator, zone: Zone):
+    def __init__(self, coordinator: RehauNeaSmart2DataUpdateCoordinator, zone: Zone, installation_unique: str):
         """Initialize the generic sensor class."""
         self._zone = zone
         self._coordinator = coordinator
         self._available = True
+        self._id = zone.id
         self._zone_number = zone.number
         self._name = zone.name
+        self._installation_unique = installation_unique
         self._state = round((zone.channels[0].current_temperature / 10 - 32) / 1.8, 1)
 
     @property
@@ -76,8 +78,8 @@ class RehauNeasmartGenericSensor(SensorEntity, RestoreEntity):
 
     @property
     def available(self) -> bool:
-        """Return True if the sensor is available, False otherwise."""
-        return self._available
+        """Return True if the climate entity is available."""
+        return self._coordinator.is_connected(self._installation_unique)
 
     @property
     def native_value(self) -> float | None:
@@ -95,11 +97,12 @@ class RehauNeasmart2TemperatureSensor(RehauNeasmartGenericSensor):
             self,
             coordinator,
             zone: Zone,
+            installation_unique: str,
             entity_description: SensorEntityDescription,
     ):
         """Initialize the temperature sensor class."""
-        super().__init__(coordinator, zone)
-        self._attr_unique_id = f"{self._name}_temperature"
+        super().__init__(coordinator, zone, installation_unique)
+        self._attr_unique_id = f"{self._id}_temperature"
         self._attr_name = f"{self._name} Temperature"
         self.entity_description = entity_description
 
