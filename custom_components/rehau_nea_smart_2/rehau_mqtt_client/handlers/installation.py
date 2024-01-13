@@ -1,13 +1,25 @@
 """Handlers for installation data."""
 from ..models import Installation
 from ..utils import parse_operating_mode, get_global_energy_level, save_as_json
+import datetime
 
+def is_installation_connected(installation) -> bool:
+    if 'lastConnection' in installation and 'connectionState' in installation:
+        last_connection = installation['lastConnection']
+        connection_state = installation['connectionState']
+
+        last_connection_date = datetime.datetime.strptime(last_connection, '%Y-%m-%dT%H:%M:%S.%fZ')
+
+        return connection_state and last_connection_date is not None
+
+    return False
 
 def parse_installations(installations) -> list[Installation]:
     """Parse installations data."""
     installations_data = [
         {
             "id": installation["_id"],
+            "connected": is_installation_connected(installation),
             "unique": installation["unique"],
             "global_energy_level": get_global_energy_level(installation).value,
             "operating_mode": parse_operating_mode(

@@ -48,7 +48,7 @@ async def async_setup_entry(hass, entry, async_add_devices):
             for group in installation.groups:
                 for zone in group.zones:
                     devices.append(
-                        RehauNeaSmart2RoomClimate(coordinator, zone, installation.operating_mode, entity_description)
+                        RehauNeaSmart2RoomClimate(coordinator, zone, installation.operating_mode, installation.connected, entity_description)
                     )
 
     async_add_devices(devices)
@@ -60,11 +60,11 @@ class IntegrationRehauNeaSmart2Climate(ClimateEntity, RestoreEntity):
     _attr_has_entity_name = False
     _attr_temperature_unit = UnitOfTemperature.CELSIUS
 
-    def __init__(self, coordinator: RehauNeaSmart2DataUpdateCoordinator, zone: Zone, operating_mode: str):
+    def __init__(self, coordinator: RehauNeaSmart2DataUpdateCoordinator, zone: Zone, operating_mode: str, connected: bool):
         """Initialize the Rehau Nea Smart 2 climate entity."""
         self._coordinator = coordinator
         self._state = None
-        self._available = True
+        self._connected = connected
         channel = zone.channels[0]
 
         attributes = {
@@ -107,7 +107,7 @@ class IntegrationRehauNeaSmart2Climate(ClimateEntity, RestoreEntity):
     @property
     def available(self) -> bool:
         """Return True if the climate entity is available."""
-        return True
+        return self._connected
 
 
 class RehauNeaSmart2RoomClimate(IntegrationRehauNeaSmart2Climate):
@@ -118,10 +118,11 @@ class RehauNeaSmart2RoomClimate(IntegrationRehauNeaSmart2Climate):
             coordinator: RehauNeaSmart2DataUpdateCoordinator,
             zone,
             operating_mode,
+            connected,
             entity_description: ClimateEntityDescription,
     ):
         """Initialize the Rehau Nea Smart 2 room climate entity."""
-        super().__init__(coordinator, zone, operating_mode)
+        super().__init__(coordinator, zone, operating_mode, connected)
         self._attr_unique_id = f"{self._id}_thermostat"
         self._attr_name = f"{self._name} Thermostat"
         self._attr_supported_features |= ClimateEntityFeature.PRESET_MODE

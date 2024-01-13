@@ -61,5 +61,6 @@ class Installation(BaseModel):
     id: str
     unique: str
     global_energy_level: int
+    connected: bool
     operating_mode: int
     groups: list[Group]
