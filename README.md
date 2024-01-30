@@ -1,8 +1,8 @@
-# Rehua Nea Smart 2.0 Home Assistant Integration
+# Rehau Nea Smart 2.0 Home Assistant Integration
 
 ## Important Notice
 - **Development Stage:** This integration is currently in development and is not yet recommended for production use. Please proceed at your own risk. The developer assumes no responsibility for any potential damage caused by using this integration.
-- **Not Affiliated:** This integration is not affiliated with Rehua in any manner.
+- **Not Affiliated:** This integration is not affiliated with Rehau in any manner.
 
 ## Overview
 
