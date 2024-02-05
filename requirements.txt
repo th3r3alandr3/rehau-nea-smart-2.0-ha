@@ -3,7 +3,7 @@ homeassistant==2023.8.0
 pip>=21.0,<23.2
 ruff==0.0.292
 asyncio==3.4.3
-certifi==2023.11.17
+certifi==2024.2.2
 charset-normalizer==3.3.2
 future==0.18.3
 idna==3.6
