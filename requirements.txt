@@ -11,7 +11,5 @@ lz4==4.3.3
 paho-mqtt==1.6.1
 requests==2.31.0
 urllib3<2,>=1.26.5
-schedule==1.2.1
 deepmerge==1.1.1
-aioschedule==0.5.2
 aiocron==1.8
