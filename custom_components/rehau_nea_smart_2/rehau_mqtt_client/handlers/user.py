@@ -12,7 +12,7 @@ async def read_user_state(payload: dict):
     """Handle the refresh of the authentication token.
 
     Args:
-        refresh_token (str): The refresh token used to refresh the authentication token.
+        payload: The payload to send to the API.
 
     Returns:
         dict: The response from the refresh API call.

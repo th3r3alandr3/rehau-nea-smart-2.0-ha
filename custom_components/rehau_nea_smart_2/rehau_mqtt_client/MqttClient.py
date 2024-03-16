@@ -23,6 +23,7 @@ _LOGGER = logging.getLogger(__name__)
 
 class MqttClient:
     """MQTT client for the Rehau NEA Smart 2 integration."""
+
     MAX_CONNECT_RETRIES = 5
 
     def __init__(self, username, password):
@@ -170,7 +171,7 @@ class MqttClient:
         """Replace the wildcards in the topic with the installation ID and user mail.
 
         Args:
-            string: The topic to replace the wildcards in.
+            topic: The topic to replace the wildcards in.
 
         Returns:
             str: The topic with the wildcards replaced.
@@ -271,7 +272,6 @@ class MqttClient:
             installations: The installations.
         """
         if len(installations) > 0 and "groups" in installations[0] and len(installations[0]["groups"]) > 0:
-            print("Writing installations to file")
             self.update_installations(installations)
             self.set_install_id()
 
