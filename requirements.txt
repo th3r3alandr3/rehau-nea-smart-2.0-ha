@@ -11,6 +11,5 @@ lz4==4.3.3
 paho-mqtt==1.6.1
 requests==2.31.0
 urllib3==2.1.0
-apscheduler==3.10.4
+apscheduler==3.9.1
 deepmerge==1.1.1
-tzlocal==2.1
