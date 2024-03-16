@@ -31,7 +31,7 @@ def read_from_json(file_name) -> list:
     data_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "data"))
     file_path = os.path.join(data_dir, file_name)
     try:
-        with open(file_path, "r") as file:
+        with open(file_path) as file:
             data = json.load(file)
             if data is None:
                 return []

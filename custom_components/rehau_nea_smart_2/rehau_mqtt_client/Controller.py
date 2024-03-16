@@ -30,6 +30,7 @@ class Controller:
         self.mqtt_client.disconnect()
 
     def is_connected(self, installation_unique: str):
+        """Check if the installation is connected to the MQTT broker."""
         Installations = self.get_installations_as_dict()
         if Installations is None:
             return False
@@ -291,7 +292,7 @@ class Controller:
                 for zone in group["zones"]:
                     zones[installation["unique"]].append(zone["number"])
 
-        for installation_unique, zones in zones.items():
+        for _installation_unique, zones in zones.items():
             global_energy_level_request = replace_keys(
                 {
                     "controller": payload["controller"]
