@@ -134,7 +134,7 @@ class RehauNeaSmart2RoomClimate(IntegrationRehauNeaSmart2Climate):
         self._attr_preset_mode = PRESET_ENERGY_LEVELS_MAPPING_REVERSE[self._mode]
         self._attr_hvac_mode = PRESET_CLIMATE_MODES_MAPPING[self._operation_mode]
         self._attr_current_temperature = self.format_temperature(self._current_temp)
-        self._attr_target_temperature = self.format_temperature(self._target_temp)
+        self._attr_target_temperature = self.format_temperature(self._target_temp, True)
         self._attr_max_temp = self.format_temperature(self._max_temp)
         self._attr_min_temp = self.format_temperature(self._min_temp)
 
@@ -159,7 +159,7 @@ class RehauNeaSmart2RoomClimate(IntegrationRehauNeaSmart2Climate):
         if zone is not None:
             channel = zone.channels[0]
             self._attr_current_temperature = self.format_temperature(channel.current_temperature)
-            self._attr_target_temperature = self.format_temperature(channel.target_temperature)
+            self._attr_target_temperature = self.format_temperature(channel.target_temperature, True)
             self._attr_preset_mode = PRESET_ENERGY_LEVELS_MAPPING_REVERSE[channel.energy_level]
             self._attr_hvac_mode = PRESET_CLIMATE_MODES_MAPPING[channel.operating_mode]
             self._operation = channel.operating_mode
