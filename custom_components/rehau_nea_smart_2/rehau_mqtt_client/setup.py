@@ -17,7 +17,7 @@ setup(
         'urllib3==1.26.18',
         'httpx==0.27.0',
         'pydantic==2.6.3',
-        'apscheduler==3.8.0',
+        'apscheduler==3.10.4',
         'deepmerge==1.1.1',
     ],
 )
