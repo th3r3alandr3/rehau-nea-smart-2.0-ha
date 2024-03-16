@@ -2,9 +2,9 @@
 import asyncio
 import json
 import paho.mqtt.client as mqtt
-import threading
 import logging
 import schedule
+import aiocron
 import time
 import re
 
@@ -15,7 +15,6 @@ from .exceptions import (
     MqttClientCommunicationError,
     MqttClientError,
 )
-from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from deepmerge import Merger
 
 
@@ -42,6 +41,7 @@ class MqttClient:
         self.installations = None
         self.authenticated = False
         self.referentials = None
+        self.transaction_id = None
         self.current_installation = {
             "id": None,
             "unique": None,
@@ -53,7 +53,8 @@ class MqttClient:
             {"topic": ClientTopics.LISTEN.value, "options": {}},
             {"topic": ClientTopics.LISTEN_TO_CONTROLLER.value, "options": {}},
         ]
-        self.scheduler = AsyncIOScheduler()
+        self.stop_scheduler_loop = False
+        self.scheduler_task = None
         self.number_of_retries = 0
 
     @staticmethod
@@ -147,7 +148,7 @@ class MqttClient:
                 }
                 return
 
-    async def read_user(self):
+    async def read_user_http(self):
         """Read user data from the server periodically."""
         _LOGGER.debug("Read user")
         payload = {
@@ -160,12 +161,33 @@ class MqttClient:
         user = await read_user_state(payload)
         self.set_user(user)
 
-    async def refresh(self):
+    async def refresh_http(self):
         """Refresh the user data periodically."""
         _LOGGER.debug("Refreshing user data")
         self.number_of_retries = 0
         self.send_topics()
-        await self.read_user()
+        await self.read_user_http()
+
+    def refresh(self):
+        """Refresh the user data periodically."""
+        _LOGGER.debug("Refreshing user data")
+        self.number_of_retries = 0
+        self.send_topics()
+        self.read_user()
+
+    def read_user(self):
+        """Read user data from the server."""
+        _LOGGER.debug("Read user")
+        payload = {
+            "ID": self.auth_username,
+            "token": self.token_data["access_token"],
+            "sso": True,
+            "data": {
+                "demand": self.get_install_id(),
+                "email": self.auth_username,
+            },
+        }
+        self.send_message(ServerTopics.USER_READ.value, payload)
 
     def replace_wildcards(self, topic: str):
         """Replace the wildcards in the topic with the installation ID and user mail.
@@ -213,7 +235,6 @@ class MqttClient:
         result, mid = self.client.publish(topic, payload=json_message)
         if result != mqtt.MQTT_ERR_SUCCESS:
             _LOGGER.error(f"Error sending message {topic}: {json_message}")
-
         return mid
 
     def start_mqtt_client(self):
@@ -253,17 +274,19 @@ class MqttClient:
         """Authenticate the user with the provided credentials."""
         token_data, user = await auth(self.auth_username, self.auth_password)
         self.set_token_data(token_data)
-        self.user = user
-        self.set_install_id()
-        self.set_installations(self.user["installs"])
+        self.set_user(user)
         self.init_mqtt_client()
 
     async def refresh_token(self):
         """Refresh the authentication token."""
 
         _LOGGER.debug("Refreshing token")
-        token_data = await refresh(self.token_data["refresh_token"])
-        self.set_token_data(token_data)
+        try:
+            token_data = await refresh(self.token_data["refresh_token"])
+            self.set_token_data(token_data)
+        except MqttClientAuthenticationError as e:
+            _LOGGER.error("Could not refresh token: " + str(e))
+            return
 
     def set_installations(self, installations):
         """Set the installations.
@@ -303,7 +326,6 @@ class MqttClient:
 
         save_as_json(merged_installations, "installations_raw.json")
 
-        _LOGGER.debug("Writing installations to file " + str(merged_installations))
         self.installations = parse_installations(merged_installations)
 
     def set_token_data(self, token_data):
@@ -329,6 +351,18 @@ class MqttClient:
             dict: The user data.
         """
         return self.user
+
+    def get_transaction_id(self):
+        """Get the transaction ID.
+
+        Returns:
+            str: The transaction ID.
+        """
+        if self.transaction_id is not None:
+            return self.transaction_id
+
+        self.transaction_id = self.user["transactionId"] if "transactionId" in self.user else None
+        return self.transaction_id
 
     def set_user(self, user):
         """Set the user data.
@@ -432,60 +466,38 @@ class MqttClient:
 
         raise MqttClientError("No channel found for id " + channel_id)
 
-    # def start_scheduler(self):
-    #     """Start the scheduler to run periodic tasks."""
-    #     _LOGGER.debug("Starting scheduler thread")
-    #     schedule.every(60).seconds.do(self.refresh).tag("refresh")
-    #     schedule.every(300).seconds.do(self.request_server_referentials).tag("referentials")
-    #     if "access_token" in self.token_data:
-    #         _LOGGER.debug("Scheduling token refresh")
-    #         expires_in = self.token_data["expires_in"] - 300
-    #         schedule.every(expires_in).seconds.do(self.refresh_token).tag("token")
-    #     else:
-    #         _LOGGER.error("No access token found")
+    def run_scheduler(self):
+        """Run the scheduler in a separate thread."""
+        while not self.stop_scheduler_loop:
+            schedule.run_pending()
+            time.sleep(1)
 
-    #     while not self.stop_scheduler_loop:
-    #         schedule.run_pending(
-    #         time.sleep(1)
-
-
-    # def stop_scheduler(self):
-    #     """Stop the scheduler."""
-    #     _LOGGER.debug("Stopping scheduler")
-    #     schedule.clear("refresh")
-    #     schedule.clear("referentials")
-    #     schedule.clear("token")
-    #     self.stop_scheduler_loop = True
-
-    # def start_scheduler_thread(self):
-    #     """Start the scheduler in a separate thread."""
-    #     self.scheduler_thread = threading.Thread(target=self.start_scheduler, name="Rehau NEA Smart 2 Scheduler")
-    #     self.scheduler_thread.start()
-
-    # def stop_scheduler_thread(self):
-    #     """Stop the scheduler thread."""
-    #     self.stop_scheduler()
-    #     self.scheduler_thread.join()
-
-    def start_scheduler(self):
-        """Start the scheduler to run periodic tasks."""
+    async def start_scheduler_task(self):
+        """Start the scheduler in a separate thread."""
         _LOGGER.debug("Starting scheduler thread")
-        self.scheduler.add_job(self.refresh, 'interval', seconds=60, id="refresh")
-        self.scheduler.add_job(self.request_server_referentials, 'interval', seconds=300, id="referentials")
+        aiocron.crontab("*/1 * * * *", func=self.refresh_http, start=True)
+        aiocron.crontab("*/5 * * * *", func=self.request_server_referentials, start=True)
         if "access_token" in self.token_data:
             _LOGGER.debug("Scheduling token refresh")
             expires_in = self.token_data["expires_in"] - 300
-            self.scheduler.add_job(self.refresh_token, 'interval', seconds=expires_in, id="token")
+            _LOGGER.debug("Token expires in " + str(expires_in) + " seconds")
+            # aiocron.crontab(f"*/{expires_in} * * * *", func=self.refresh_token, start=True)
         else:
             _LOGGER.error("No access token found")
 
-        loop = asyncio.new_event_loop()
-        asyncio.set_event_loop(loop)
-        self.scheduler.start()
+        while not self.stop_scheduler_loop:
+            await asyncio.sleep(1)
+
+    def start_scheduler(self):
+        """Start the scheduler to run periodic tasks."""
+        self.scheduler_task = asyncio.create_task(self.start_scheduler_task(), name="Rehau NEA Smart 2 Scheduler")
 
     def stop_scheduler(self):
         """Stop the scheduler."""
         _LOGGER.debug("Stopping scheduler")
-        self.scheduler.remove_all_jobs()
-        self.scheduler.shutdown()
+        self.stop_scheduler_loop = True
+        if self.scheduler_task:
+            self.scheduler_task.cancel()
+            self.scheduler_task = None
+
 

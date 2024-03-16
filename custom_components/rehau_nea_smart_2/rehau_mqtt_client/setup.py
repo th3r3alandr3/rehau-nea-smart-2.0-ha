@@ -19,5 +19,6 @@ setup(
         'pydantic==2.6.3',
         'apscheduler==3.9.1',
         'deepmerge==1.1.1',
+        'schedule==1.2.1',
     ],
 )

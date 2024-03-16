@@ -26,7 +26,10 @@ async def read_user_state(payload: dict):
         async with httpx.AsyncClient() as client:
             user_response = await client.get(url, headers=headers)
             if user_response.status_code >= 400:
-                raise MqttClientAuthenticationError("Could not read user data from the API. Status code: " + str(user_response.status_code) + " Reason: " + user_response.text)
+                if user_response.status_code == 401:
+                    raise MqttClientAuthenticationError("Could not read user data from the API. Status code: " + str(user_response.status_code) + " Reason: " + user_response.text)
+                else:
+                    raise MqttClientCommunicationError("Could not read user data from the API. Status code: " + str(user_response.status_code) + " Reason: " + user_response.text)
 
             user = user_response.json()
             return user["data"]["user"]
@@ -34,8 +37,8 @@ async def read_user_state(payload: dict):
 
 
     except MqttClientCommunicationError as e:
-        _LOGGER.error("Error while refreshing token: %s", e)
+        _LOGGER.error("Error while refreshing user state: %s", e)
         return None
     except MqttClientAuthenticationError as e:
-        _LOGGER.error("Error while refreshing token: %s", e)
+        _LOGGER.error("Error while refreshing user state: %s", e)
         return None
