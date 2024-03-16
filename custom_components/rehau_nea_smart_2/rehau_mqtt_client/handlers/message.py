@@ -44,14 +44,10 @@ def handle_user_message(payload: str, client):
 
 def handle_user_read(message: dict, client):
     """Handle user read."""
-    data = decompress_utf16(message["data"])
-    client.user = data
-    installations = client.user["installs"]
-    # write data to file
-    if len(installations) > 0 and "groups" in installations[0] and len(installations[0]["groups"]) > 0:
-        _LOGGER.debug("Writing installations to file")
-        client.installations = parse_installations(installations)
     _LOGGER.debug("Handling user read")
+    data = decompress_utf16(message["data"])
+    _LOGGER.debug("User data: " + str(data))
+    client.set_user(data)
 
 
 def handle_user_auth(message: dict, client):

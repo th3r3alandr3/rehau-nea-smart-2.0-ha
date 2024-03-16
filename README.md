@@ -13,6 +13,13 @@ The Rehua Nea Smart 2.0 Home Assistant Integration empowers you to control and m
 - **Climate Control:** Effortlessly set and monitor temperature along with other climate control parameters.
 - **Seamless Integration:** Enjoy a unified smart home experience with seamless integration into Home Assistant.
 
+## Known Limitations
+
+- **Multiple Installations:** The integration currently only tested with a single installation linked to the Rehua account. Multiple installations may not work as expected.
+- **Multiple rooms:** The integration is currently only tested with a single room with multiple zones. Multiple rooms may not work as expected.
+- **Limited Functionality:** The integration currently only supports basic climate control functionality. Advanced features such as scheduling are not supported.
+- **Global Heatmode:** The Nea Smart Controller only supports a global heat mode. This means that the changes made to the heat mode will affect all zones.
+
 ## Installation
 
 ### Prerequisites

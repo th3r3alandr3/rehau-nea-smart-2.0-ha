@@ -27,7 +27,7 @@ async def auth(email, password, check_credentials=False):
     )
     async with httpx.AsyncClient() as client:
         _LOGGER.debug("Getting login site")
-        login_site = await client.get(url)
+        login_site = await client.get(url, timeout=30)
         parsed_url = urlparse(login_site.headers["Location"])
         query = parse_qs(parsed_url.query)
         if "requestId" not in query:
@@ -41,7 +41,7 @@ async def auth(email, password, check_credentials=False):
             "rememberMe": "true",
         }
 
-        response = await client.post("https://accounts.rehau.com/login-srv/login", data=data, headers={
+        response = await client.post("https://accounts.rehau.com/login-srv/login", timeout=30, data=data, headers={
             "Content-Type": "application/x-www-form-urlencoded",
             "Origin": "https://accounts.rehau.com",
             "Referer": "https://accounts.rehau.com/rehau-ui/login?requestId={}&view_type=login".format(request_id),
@@ -66,7 +66,7 @@ async def auth(email, password, check_credentials=False):
                 return False
             raise MqttClientAuthenticationError("No code found")
 
-        token_response = await client.post("https://accounts.rehau.com/token-srv/token", data={
+        token_response = await client.post("https://accounts.rehau.com/token-srv/token", timeout=30, data={
             "client_id": "3f5d915d-a06f-42b9-89cc-2e5d63aa96f1",
             "code": queries["code"],
             "grant_type": "authorization_code",
@@ -86,7 +86,7 @@ async def auth(email, password, check_credentials=False):
 
         token_data = token_response.json()
 
-        user_response = await client.get(f"https://api.nea2aws.aws.rehau.cloud/v1/users/{email}/getUserData",
+        user_response = await client.get(f"https://api.nea2aws.aws.rehau.cloud/v1/users/{email}/getUserData", timeout=30,
                                 headers={"Authorization": "Bearer " + token_data["access_token"]})
 
         if user_response.status_code != 200:
@@ -100,7 +100,7 @@ async def refresh(refresh_token):
     """Handle the refresh of the authentication token."""
 
     async with httpx.AsyncClient() as client:
-        token_response = await client.post("https://accounts.rehau.com/token-srv/token", data={
+        token_response = await client.post("https://accounts.rehau.com/token-srv/token", timeout=30, data={
             "client_id": "3f5d915d-a06f-42b9-89cc-2e5d63aa96f1",
             "refresh_token": refresh_token,
             "grant_type": "refresh_token",
@@ -109,9 +109,9 @@ async def refresh(refresh_token):
             "Content-Type": "application/json",
         })
 
-        if token_response.status_code != 200:
+        if token_response.status_code >= 400:
             _LOGGER.error("Could not refresh token")
-            raise MqttClientAuthenticationError("Could not refresh token")
+            raise MqttClientAuthenticationError("Could not refresh token (status code {}) (response: {})".format(token_response.status_code, token_response.text))
 
         token_data = token_response.json()
 
