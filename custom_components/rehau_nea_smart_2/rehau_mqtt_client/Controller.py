@@ -1,8 +1,5 @@
 """Controller module for the REHAU NEA SMART 2 integration."""
-import asyncio
-from homeassistant.core import HomeAssistant
-
-from .utils import replace_keys, EnergyLevels, OperationModes
+from .utils import replace_keys, EnergyLevels, OperationModes, ClientTopics
 from .handlers import update_temperature, update_energy_level, update_operating_mode
 from .models import Installation, Zone
 from .MqttClient import MqttClient
@@ -12,24 +9,34 @@ from .exceptions import MqttClientError
 class Controller:
     """Controller class for the REHAU NEA SMART 2 integration."""
 
-    def __init__(self, hass: HomeAssistant, email: str, password: str):
+    def __init__(self, email: str, password: str):
         """Initializ the Controller object.
 
         Args:
-            hass (HomeAssistant): The HomeAssistant instance.
             email (str): The email address for authentication.
             password (str): The password for authentication.
         """
-        self.mqtt_client = MqttClient(hass, username=email, password=password)
-        self.hass = hass
+        self.auth_username = email
+        self.auth_password = password
+        self.mqtt_client = None
 
     async def connect(self):
         """Connect to the MQTT broker and authenticates the user."""
+        self.mqtt_client = MqttClient(username=self.auth_username, password=self.auth_password)
         await self.mqtt_client.auth_user()
 
     async def disconnect(self):
         """Disconnect from the MQTT broker."""
         self.mqtt_client.disconnect()
+
+    def is_connected(self, installation_unique: str):
+        Installations = self.get_installations_as_dict()
+        if Installations is None:
+            return False
+        for installation in Installations:
+            if installation["unique"] == installation_unique:
+                return installation["connected"]
+
 
     def is_authenticated(self):
         """Check if the user is authenticated.
@@ -202,11 +209,7 @@ class Controller:
         )
 
         update_temperature(self.get_installations_as_dict(), payload["zone"], int_temperature)
-
-        installation_unique = self.get_installation_unique_by_zone(payload["zone"])
-        return self.mqtt_client.send_message(
-            f"$client/{installation_unique}", temperature_request
-        )
+        return self.mqtt_client.send_message(ClientTopics.INSTALLATION.value, temperature_request)
 
     def get_energy_level(self, zone: int) -> EnergyLevels:
         """Retrieve the energy level for a specific zone.
@@ -252,11 +255,7 @@ class Controller:
         )
 
         update_energy_level(self.get_installations_as_dict(), payload["zone"], payload["mode"])
-
-        installation_unique = self.get_installation_unique_by_zone(payload["zone"])
-        return self.mqtt_client.send_message(
-            f"$client/{installation_unique}", energy_level_request
-        )
+        return self.mqtt_client.send_message(ClientTopics.INSTALLATION.value, energy_level_request)
 
     def get_global_energy_level(self) -> EnergyLevels:
         """Retrieve the global energy level.
@@ -304,9 +303,7 @@ class Controller:
                 self.mqtt_client.get_referentials(),
             )
 
-            return self.mqtt_client.send_message(
-                f"$client/{installation_unique}", global_energy_level_request
-            )
+            return self.mqtt_client.send_message(ClientTopics.INSTALLATION.value, global_energy_level_request)
 
     def get_operation_mode(self) -> OperationModes:
         """Retrieve the operation mode.
@@ -347,17 +344,8 @@ class Controller:
         )
 
 
-
-        if "unique" in payload:
-            installation_unique = payload["unique"]
-        else:
-            installation_unique = self.get_installation_unique_by_zone(payload["zone"])
-
-
-        update_operating_mode(self.get_installations_as_dict(), installation_unique, payload["mode"])
-        return self.mqtt_client.send_message(
-            f"$client/{installation_unique}", operation_mode_request
-        )
+        update_operating_mode(self.get_installations_as_dict(), self.mqtt_client.get_install_id, payload["mode"])
+        return self.mqtt_client.send_message(ClientTopics.INSTALLATION.value, operation_mode_request)
 
     def is_ready(self) -> bool:
         """Check if the controller is connected to the MQTT broker.

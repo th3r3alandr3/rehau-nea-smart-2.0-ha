@@ -59,6 +59,14 @@ class RehauNeaSmart2DataUpdateCoordinator(DataUpdateCoordinator):
             update_interval=timedelta(minutes=5),
         )
 
+    def is_connected(self, installation_unique: str) -> bool:
+        """Get connection status.
+
+        Returns:
+            bool: True if connected, False otherwise.
+        """
+        return self.controller.is_connected(installation_unique)
+
     async def async_get_health(self) -> bool:
         """Get health from the API.
 

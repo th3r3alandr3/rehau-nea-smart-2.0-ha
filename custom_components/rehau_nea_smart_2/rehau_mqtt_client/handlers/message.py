@@ -78,21 +78,22 @@ def handle_user_auth(message: dict, client):
 def handle_channel_update(message, client):
     """Handle channel update."""
     channel_id = message["data"]["channel"]
+    unique = message["data"]["unique"]
     data = message["data"]["data"]
     mode_used = data["mode_used"]
     setpoint_used = data["setpoint_used"]
     _LOGGER.debug(f"Channel {channel_id} updated to {mode_used} {setpoint_used}")
     client.update_channel({
-        "channel_id": message["data"]["channel"],
-        "install_id": message["data"]["installId"],
-        "mode_used": message["data"]["data"]["mode_used"],
-        "setpoint_used": message["data"]["data"]["setpoint_used"]
+        "channel_id": channel_id,
+        "install_id": unique,
+        "mode_used": mode_used,
+        "setpoint_used": setpoint_used
     })
 
 
 def handle_referential(message, client):
     """Handle referential."""
-    referentials = message["data"]
+    referentials = decompress_utf16(message["data"])
     client.referentials = referentials
     save_as_json(referentials, "referentials.json")
     _LOGGER.debug("Referentials updated")

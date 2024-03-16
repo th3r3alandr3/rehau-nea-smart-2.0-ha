@@ -68,8 +68,8 @@ class RehauNeaSmart2GenericSelect(SelectEntity, RestoreEntity):
 
     @property
     def available(self) -> bool:
-        """Return True if the Select is available."""
-        return self._available
+        """Return True if the climate entity is available."""
+        return self._coordinator.is_connected(self._unique)
 
     @property
     def native_value(self) -> float | None:

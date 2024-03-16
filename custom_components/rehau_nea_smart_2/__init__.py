@@ -24,7 +24,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Set up this integration using UI."""
     hass.data.setdefault(DOMAIN, {})
     if f"{entry.entry_id}_controller" not in hass.data[DOMAIN]:
-        controller = Controller(hass, entry.data[CONF_EMAIL], entry.data[CONF_PASSWORD])
+        controller = Controller(entry.data[CONF_EMAIL], entry.data[CONF_PASSWORD])
         await controller.connect()
         hass.data[DOMAIN][f"{entry.entry_id}_controller"] = controller
     else:

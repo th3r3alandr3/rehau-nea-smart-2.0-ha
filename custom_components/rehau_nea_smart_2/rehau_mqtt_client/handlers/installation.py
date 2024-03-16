@@ -22,6 +22,7 @@ def parse_installations(installations) -> list[Installation]:
             "id": installation["_id"],
             "connected": is_installation_connected(installation),
             "unique": installation["unique"],
+            "hash": installation["hash"] if "hash" in installation else None,
             "global_energy_level": get_global_energy_level(installation).value,
             "operating_mode": parse_operating_mode(
                 installation["user"]["heatcool_auto_01"]
