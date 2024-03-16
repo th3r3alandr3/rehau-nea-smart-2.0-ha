@@ -19,5 +19,6 @@ setup(
         'pydantic==2.6.3',
         'apscheduler==3.10.4',
         'deepmerge==1.1.1',
+        "tzlocal==2.1",
     ],
 )
