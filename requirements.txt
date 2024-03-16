@@ -10,6 +10,6 @@ idna==3.6
 lz4==4.3.3
 paho-mqtt==1.6.1
 requests==2.31.0
-urllib3<2,>=1.26.5
+urllib3>=1.26.5,<3
 deepmerge==1.1.1
 aiocron==1.8
