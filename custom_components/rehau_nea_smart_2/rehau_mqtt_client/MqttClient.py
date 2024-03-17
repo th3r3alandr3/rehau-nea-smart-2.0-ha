@@ -130,7 +130,8 @@ class MqttClient:
         if rc != 0:
             self.number_of_retries += 1
             if self.number_of_retries <= self.MAX_CONNECT_RETRIES:
-                _LOGGER.error("Unexpected disconnection. Retrying...")
+                # A disconnect is expected every 10 minutes, so we don't want to log it as an error
+                _LOGGER.info("Unexpected disconnection. Retrying...")
             else:
                 _LOGGER.error("Unexpected disconnection. Stopping...")
                 self.disconnect()
@@ -159,7 +160,8 @@ class MqttClient:
             "demand": self.get_install_id(),
         }
         user = await read_user_state(payload)
-        self.set_user(user)
+        if user is not None:
+            self.set_user(user)
 
     async def refresh_http(self):
         """Refresh the user data periodically."""
@@ -234,7 +236,7 @@ class MqttClient:
         _LOGGER.debug(f"Sending message {topic}: {json_message}")
         result, mid = self.client.publish(topic, payload=json_message)
         if result != mqtt.MQTT_ERR_SUCCESS:
-            _LOGGER.error(f"Error sending message {topic}: {json_message}")
+            _LOGGER.error(f"Error sending message {topic}")
         return mid
 
     def start_mqtt_client(self):
@@ -371,7 +373,8 @@ class MqttClient:
             user: The user data.
         """
         self.user = user
-        self.set_installations(user["installs"])
+        if "installs" in user:
+            self.set_installations(user["installs"])
 
     def get_install_id(self):
         """Get the installation ID.
@@ -403,7 +406,7 @@ class MqttClient:
         Returns:
             list: The installation IDs.
         """
-        return [install["_id"] for install in self.user["installs"]]
+        return [install["_id"] for install in self.get_installations()]
 
     def get_referentials(self):
         """Get the referentials.
