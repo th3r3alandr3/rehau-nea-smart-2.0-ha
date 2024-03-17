@@ -406,7 +406,7 @@ class MqttClient:
         Returns:
             list: The installation IDs.
         """
-        return [install["_id"] for install in self.get_installations()]
+        return [install["id"] for install in self.get_installations()]
 
     def get_referentials(self):
         """Get the referentials.
