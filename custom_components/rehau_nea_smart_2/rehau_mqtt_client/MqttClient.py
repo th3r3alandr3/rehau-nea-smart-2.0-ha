@@ -130,7 +130,8 @@ class MqttClient:
         if rc != 0:
             self.number_of_retries += 1
             if self.number_of_retries <= self.MAX_CONNECT_RETRIES:
-                _LOGGER.error("Unexpected disconnection. Retrying...")
+                # A disconnect is expected every 10 minutes, so we don't want to log it as an error
+                _LOGGER.info("Unexpected disconnection. Retrying...")
             else:
                 _LOGGER.error("Unexpected disconnection. Stopping...")
                 self.disconnect()
@@ -234,7 +235,7 @@ class MqttClient:
         _LOGGER.debug(f"Sending message {topic}: {json_message}")
         result, mid = self.client.publish(topic, payload=json_message)
         if result != mqtt.MQTT_ERR_SUCCESS:
-            _LOGGER.error(f"Error sending message {topic}: {json_message}")
+            _LOGGER.error(f"Error sending message {topic}")
         return mid
 
     def start_mqtt_client(self):
