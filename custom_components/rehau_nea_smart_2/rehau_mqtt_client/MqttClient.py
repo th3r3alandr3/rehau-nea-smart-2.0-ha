@@ -160,7 +160,8 @@ class MqttClient:
             "demand": self.get_install_id(),
         }
         user = await read_user_state(payload)
-        self.set_user(user)
+        if user is not None:
+            self.set_user(user)
 
     async def refresh_http(self):
         """Refresh the user data periodically."""
@@ -372,7 +373,8 @@ class MqttClient:
             user: The user data.
         """
         self.user = user
-        self.set_installations(user["installs"])
+        if "installs" in user:
+            self.set_installations(user["installs"])
 
     def get_install_id(self):
         """Get the installation ID.
@@ -404,7 +406,7 @@ class MqttClient:
         Returns:
             list: The installation IDs.
         """
-        return [install["_id"] for install in self.user["installs"]]
+        return [install["_id"] for install in self.get_installations()]
 
     def get_referentials(self):
         """Get the referentials.
