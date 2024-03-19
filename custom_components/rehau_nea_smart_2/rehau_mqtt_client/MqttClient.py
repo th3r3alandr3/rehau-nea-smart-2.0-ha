@@ -159,9 +159,15 @@ class MqttClient:
             "token": self.token_data["access_token"],
             "demand": self.get_install_id(),
         }
-        user = await read_user_state(payload)
-        if user is not None:
-            self.set_user(user)
+        try:
+            user = await read_user_state(payload)
+            if user is not None:
+                self.set_user(user)
+        except MqttClientCommunicationError as e:
+            _LOGGER.error("Error while refreshing user state: %s", e)
+        except MqttClientAuthenticationError:
+            _LOGGER.info("Token expired. Refreshing...")
+            await self.refresh_token()
 
     async def refresh_http(self):
         """Refresh the user data periodically."""
