@@ -12,5 +12,5 @@
     "aiocron==1.8",
     "deepmerge==1.1.1"
   ],
-  "version": "0.4.5"
+  "version": "0.4.6"
 }

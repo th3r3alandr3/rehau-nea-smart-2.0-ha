@@ -3,7 +3,7 @@ from setuptools import setup, find_packages
 
 setup(
     name='rehau_mqtt_client',
-    version='0.4.5',
+    version='0.4.6',
     packages=find_packages(),
     install_requires=[
         'asyncio==3.4.3',
