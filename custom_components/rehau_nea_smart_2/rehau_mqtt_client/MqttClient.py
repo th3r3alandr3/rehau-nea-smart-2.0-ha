@@ -242,12 +242,16 @@ class MqttClient:
         _LOGGER.debug(f"Sending message {topic}: {json_message}")
         result, mid = self.client.publish(topic, payload=json_message)
         if result != mqtt.MQTT_ERR_SUCCESS:
-            _LOGGER.error(f"Error sending message {topic}")
+            _LOGGER.error(f"Error sending message {topic}. Data: {json_message}")
         return mid
 
     def start_mqtt_client(self):
         """Start the MQTT client's event loop."""
         self.client.loop_start()
+
+    def reconnect(self):
+        """Reconnect to the MQTT broker."""
+        self.init_mqtt_client()
 
     def disconnect(self):
         """Disconnect from the MQTT broker."""
@@ -292,6 +296,7 @@ class MqttClient:
         try:
             token_data = await refresh(self.token_data["refresh_token"])
             self.set_token_data(token_data)
+            self.reconnect()
         except MqttClientAuthenticationError as e:
             _LOGGER.error("Could not refresh token: " + str(e))
             return
