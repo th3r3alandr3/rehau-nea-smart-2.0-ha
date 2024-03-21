@@ -56,7 +56,7 @@ class RehauNeaSmart2DataUpdateCoordinator(DataUpdateCoordinator):
             hass=hass,
             logger=LOGGER,
             name=DOMAIN,
-            update_interval=timedelta(minutes=5),
+            update_interval=timedelta(seconds=5),
         )
 
     def is_connected(self, installation_unique: str) -> bool:
