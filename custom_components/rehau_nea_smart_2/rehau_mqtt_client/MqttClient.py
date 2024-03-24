@@ -16,7 +16,6 @@ from .exceptions import (
     MqttClientCommunicationError,
     MqttClientError,
 )
-from deepmerge import Merger
 from homeassistant.core import HomeAssistant
 
 
