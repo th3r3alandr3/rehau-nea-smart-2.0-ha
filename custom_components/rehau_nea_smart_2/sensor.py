@@ -13,10 +13,9 @@ from homeassistant.const import (
 )
 
 from .rehau_mqtt_client import Installation, Zone
+from .rehau_mqtt_client.Controller import Controller
 
 from .const import DOMAIN
-from .coordinator import RehauNeaSmart2DataUpdateCoordinator
-from .entity import IntegrationRehauNeaSmart2Entity
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -31,9 +30,9 @@ ENTITY_DESCRIPTIONS = (
 
 async def async_setup_entry(hass, entry, async_add_devices):
     """Set up the sensor platform."""
-    coordinator = hass.data[DOMAIN][entry.entry_id]
+    controller: Controller = hass.data[DOMAIN][entry.entry_id]
 
-    installations: list[Installation] = await coordinator._async_update_data()
+    installations: list[Installation] = controller.get_installations()
 
     devices = []
 
@@ -43,7 +42,7 @@ async def async_setup_entry(hass, entry, async_add_devices):
                 for zone in group.zones:
                     devices.append(
                         RehauNeasmart2TemperatureSensor(
-                            coordinator, zone, installation.unique, entity_description
+                            controller, zone, installation.unique, entity_description
                         )
                     )
 
@@ -54,11 +53,12 @@ class RehauNeasmartGenericSensor(SensorEntity, RestoreEntity):
     """Generic sensor class for Rehau Neasmart."""
 
     _attr_has_entity_name = False
+    should_poll = False
 
-    def __init__(self, coordinator: RehauNeaSmart2DataUpdateCoordinator, zone: Zone, installation_unique: str):
+    def __init__(self, controller: Controller, zone: Zone, installation_unique: str):
         """Initialize the generic sensor class."""
         self._zone = zone
-        self._coordinator = coordinator
+        self._controller = controller
         self._available = True
         self._id = zone.id
         self._zone_number = zone.number
@@ -66,20 +66,28 @@ class RehauNeasmartGenericSensor(SensorEntity, RestoreEntity):
         self._installation_unique = installation_unique
         self._state = round((zone.channels[0].current_temperature / 10 - 32) / 1.8, 1)
 
+    async def async_added_to_hass(self) -> None:
+        """Run when this Entity has been added to HA."""
+        self._controller.register_callback(self.async_write_ha_state)
+
+    async def async_will_remove_from_hass(self):
+        """Run when this Entity will be removed from HA."""
+        self._controller.remove_callback(self.async_write_ha_state)
+
     @property
     def device_info(self):
         """Return device information for the sensor."""
         return DeviceInfo(
-            identifiers={(DOMAIN, self._coordinator.id)},
-            name=self._coordinator.name,
-            manufacturer=self._coordinator.manufacturer,
-            model=self._coordinator.model,
+            identifiers={(DOMAIN, self._controller.id)},
+            name=self._controller.name,
+            manufacturer=self._controller.manufacturer,
+            model=self._controller.model,
         )
 
     @property
     def available(self) -> bool:
         """Return True if the climate entity is available."""
-        return self._coordinator.is_connected(self._installation_unique)
+        return self._controller.is_connected(self._installation_unique)
 
     @property
     def native_value(self) -> float | None:
@@ -95,21 +103,18 @@ class RehauNeasmart2TemperatureSensor(RehauNeasmartGenericSensor):
 
     def __init__(
             self,
-            coordinator,
+            controller,
             zone: Zone,
             installation_unique: str,
             entity_description: SensorEntityDescription,
     ):
         """Initialize the temperature sensor class."""
-        super().__init__(coordinator, zone, installation_unique)
+        super().__init__(controller, zone, installation_unique)
         self._attr_unique_id = f"{self._id}_temperature"
         self._attr_name = f"{self._name} Temperature"
         self.entity_description = entity_description
 
-    async def async_update(self) -> None:
-        """Update the temperature sensor."""
-        temperature = self._coordinator.get_temperature(self._zone_number)
-        if temperature is not None:
-            self._state = temperature
-        else:
-            _LOGGER.error(f"Error updating {self._zone.name} temperature")
+    @property
+    def state(self):
+        """Return the state of the sensor."""
+        return self._controller.get_temperature(self._zone_number)

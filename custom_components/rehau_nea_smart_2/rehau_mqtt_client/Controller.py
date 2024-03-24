@@ -1,28 +1,35 @@
 """Controller module for the REHAU NEA SMART 2 integration."""
+from collections.abc import Callable
 from .utils import replace_keys, EnergyLevels, OperationModes, ClientTopics
 from .handlers import update_temperature, update_energy_level, update_operating_mode
 from .models import Installation, Zone
 from .MqttClient import MqttClient
 from .exceptions import MqttClientError
+from homeassistant.core import HomeAssistant
 
 
 class Controller:
     """Controller class for the REHAU NEA SMART 2 integration."""
 
-    def __init__(self, email: str, password: str):
+    def __init__(self, hass: HomeAssistant, email: str, password: str):
         """Initializ the Controller object.
 
         Args:
             email (str): The email address for authentication.
             password (str): The password for authentication.
         """
+        self.id = "REHAU NEA SMART 2.0"
+        self.name = "REHAU NEA SMART 2.0 Climate Control System"
+        self.model = "Neasmart 2.0 Base Station"
+        self.manufacturer = "Rehau"
         self.auth_username = email
         self.auth_password = password
         self.mqtt_client = None
+        self.hass = hass
 
     async def connect(self):
         """Connect to the MQTT broker and authenticates the user."""
-        self.mqtt_client = MqttClient(username=self.auth_username, password=self.auth_password)
+        self.mqtt_client = MqttClient(hass=self.hass, username=self.auth_username, password=self.auth_password)
         await self.mqtt_client.auth_user()
 
     async def disconnect(self):
@@ -318,11 +325,11 @@ class Controller:
         installation = self.get_installations_as_dict()[0]
         return OperationModes(installation["operating_mode"])
 
-    def set_operation_mode(self, payload: dict):
+    def set_operation_mode(self, mode: str|int):
         """Set the operation mode.
 
         Args:
-            payload (dict): The payload containing the mode information.
+            mode (str|int): The operation mode.
 
         Returns:
             Any: The result of the message sending operation.
@@ -330,22 +337,22 @@ class Controller:
         Raises:
             MqttClientError: If the mode is not found in the payload.
         """
-        if "mode" not in payload:
+        if mode is None:
             raise MqttClientError("No mode found in payload")
 
         # mode to string with 0 padding
-        payload["mode"] = str(payload["mode"]).zfill(2)
+        mode = str(mode).zfill(2)
 
         operation_mode_request = replace_keys(
             {
-                "data": {"heat_cool": payload["mode"]},
+                "data": {"heat_cool": mode},
                 "type": "REQ_TH",
             },
             self.mqtt_client.get_referentials(),
         )
 
 
-        update_operating_mode(self.get_installations_as_dict(), self.mqtt_client.get_install_id, payload["mode"])
+        update_operating_mode(self.get_installations_as_dict(), self.mqtt_client.get_install_id, mode)
         return self.mqtt_client.send_message(ClientTopics.INSTALLATION.value, operation_mode_request)
 
     def is_ready(self) -> bool:
@@ -355,3 +362,19 @@ class Controller:
             bool: True if connected, False otherwise.
         """
         return self.mqtt_client.is_ready()
+
+    def register_callback(self, callback: Callable[[], None]) -> None:
+        """Register callback, called when Roller changes state.
+
+        Args:
+            callback (Callable[[], None]): Callback to be called when Roller changes state.
+        """
+        self.mqtt_client.register_callback(callback)
+
+    def remove_callback(self, callback: Callable[[], None]) -> None:
+        """Remove previously registered callback.
+
+        Args:
+            callback (Callable[[], None]): Callback to be removed.
+        """
+        self.mqtt_client.remove_callback(callback)

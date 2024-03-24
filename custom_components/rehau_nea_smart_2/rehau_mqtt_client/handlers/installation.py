@@ -15,8 +15,9 @@ def is_installation_connected(installation) -> bool:
 
     return False
 
-def parse_installations(installations) -> list[Installation]:
+def parse_installations(installations, last_operation_mode) -> list[Installation]:
     """Parse installations data."""
+
     installations_data = [
         {
             "id": installation["_id"],
@@ -25,7 +26,7 @@ def parse_installations(installations) -> list[Installation]:
             "hash": installation["hash"] if "hash" in installation else None,
             "global_energy_level": get_global_energy_level(installation).value,
             "operating_mode": parse_operating_mode(
-                installation["user"]["heatcool_auto_01"]
+                installation["user"]["heatcool_auto_01"] if "user" in installation else last_operation_mode
             ),
             "groups": [
                 {
@@ -43,7 +44,7 @@ def parse_installations(installations) -> list[Installation]:
                                     "current_temperature": channel["temp_zone"],
                                     "energy_level": channel["mode_permanent"],
                                     "operating_mode": parse_operating_mode(
-                                        installation["user"]["heatcool_auto_01"]
+                                        installation["user"]["heatcool_auto_01"] if "user" in installation else last_operation_mode
                                     ),
                                     "setpoints": {
                                         "cooling": {
@@ -70,8 +71,6 @@ def parse_installations(installations) -> list[Installation]:
         }
         for installation in installations
     ]
-
-    save_as_json(installations_data, "installations.json")
 
     return installations_data
 
