@@ -3,7 +3,7 @@ from enum import Enum
 
 class OperationModes(Enum):
     """Operation modes."""
-
+    UNKNOWN = -1
     HEATING_ONLY = 1
     COOLING_ONLY = 2
     AUTO = 3

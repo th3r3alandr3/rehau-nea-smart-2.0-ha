@@ -11,7 +11,6 @@ from homeassistant.core import HomeAssistant
 
 from .rehau_mqtt_client.Controller import Controller
 from .const import DOMAIN
-from .coordinator import RehauNeaSmart2DataUpdateCoordinator
 
 PLATFORMS: list[Platform] = [
     Platform.CLIMATE,
@@ -22,25 +21,11 @@ PLATFORMS: list[Platform] = [
 # https://developers.home-assistant.io/docs/config_entries_index/#setting-up-an-entry
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Set up this integration using UI."""
-    hass.data.setdefault(DOMAIN, {})
-    if f"{entry.entry_id}_controller" not in hass.data[DOMAIN]:
-        controller = Controller(entry.data[CONF_EMAIL], entry.data[CONF_PASSWORD])
-        await controller.connect()
-        hass.data[DOMAIN][f"{entry.entry_id}_controller"] = controller
-    else:
-        controller = hass.data[DOMAIN][f"{entry.entry_id}_controller"]
-    hass.data[DOMAIN][entry.entry_id] = coordinator = RehauNeaSmart2DataUpdateCoordinator(
-        hass=hass,
-        sysname="REHAU NEA SMART 2.0",
-        controller=controller,
-    )
-    # https://developers.home-assistant.io/docs/integration_fetching_data#coordinated-single-api-poll-for-data-for-all-entities
-    if not controller.is_ready():
-        raise ConfigEntryNotReady
-    await coordinator.async_config_entry_first_refresh()
 
+    controller = Controller(hass, entry.data[CONF_EMAIL], entry.data[CONF_PASSWORD])
+    hass.data.setdefault(DOMAIN, {})[entry.entry_id] = controller
+    await controller.connect()
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
-    entry.async_on_unload(entry.add_update_listener(async_reload_entry))
 
     return True
 
@@ -48,9 +33,8 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Handle removal of an entry."""
     if unloaded := await hass.config_entries.async_unload_platforms(entry, PLATFORMS):
-        controller: Controller = hass.data[DOMAIN][f"{entry.entry_id}_controller"]
+        controller: Controller = hass.data[DOMAIN].pop(entry.entry_id)
         await controller.disconnect()
-        hass.data[DOMAIN].pop(f"{entry.entry_id}_controller")
         hass.data[DOMAIN].pop(entry.entry_id)
     return unloaded
 

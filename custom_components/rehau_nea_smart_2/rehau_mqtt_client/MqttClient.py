@@ -1,6 +1,7 @@
 """MQTT client for the Rehau NEA Smart 2 integration."""
 import asyncio
 import json
+from collections.abc import Callable
 import paho.mqtt.client as mqtt
 import logging
 import schedule
@@ -8,14 +9,14 @@ import aiocron
 import time
 import re
 
-from .utils import generate_uuid, ServerTopics, ClientTopics, save_as_json, read_from_json
+from .utils import generate_uuid, ServerTopics, ClientTopics
 from .handlers import handle_message, auth, refresh, parse_installations, read_user_state
 from .exceptions import (
     MqttClientAuthenticationError,
     MqttClientCommunicationError,
     MqttClientError,
 )
-from deepmerge import Merger
+from homeassistant.core import HomeAssistant
 
 
 _LOGGER = logging.getLogger(__name__)
@@ -25,13 +26,15 @@ class MqttClient:
 
     MAX_CONNECT_RETRIES = 5
 
-    def __init__(self, username, password):
+    def __init__(self, hass: HomeAssistant, username, password):
         """Initialize the MQTT client.
 
         Args:
+            hass: The Home Assistant instance.
             username: The MQTT username.
             password: The MQTT password.
         """
+        self.hass = hass
         self.username = "app"
         self.password = "appuserplatform"
         self.auth_username = username
@@ -42,6 +45,7 @@ class MqttClient:
         self.authenticated = False
         self.referentials = None
         self.transaction_id = None
+        self.last_operating_mode = None
         self.current_installation = {
             "id": None,
             "unique": None,
@@ -56,6 +60,8 @@ class MqttClient:
         self.stop_scheduler_loop = False
         self.scheduler_task = None
         self.number_of_retries = 0
+        self.number_of_message_failures = 0
+        self.callbacks = set()
 
     @staticmethod
     async def check_credentials(email, password):
@@ -109,7 +115,7 @@ class MqttClient:
         self.send_topics()
         self.request_server_referentials()
 
-    def on_message(self, client, userdata, msg):
+    async def on_message(self, client, userdata, msg):
         """Handle the received message.
 
         Args:
@@ -117,7 +123,7 @@ class MqttClient:
             userdata: The user data.
             msg: The received message.
         """
-        handle_message(msg.topic, msg.payload, self)
+        await handle_message(msg.topic, msg.payload, self)
 
     def on_disconnect(self, client, userdata, rc):
         """Log the result code when the client disconnects from the MQTT broker.
@@ -162,7 +168,7 @@ class MqttClient:
         try:
             user = await read_user_state(payload)
             if user is not None:
-                self.set_user(user)
+                await self.set_user(user)
         except MqttClientCommunicationError as e:
             _LOGGER.error("Error while refreshing user state: %s", e)
         except MqttClientAuthenticationError:
@@ -242,16 +248,20 @@ class MqttClient:
         _LOGGER.debug(f"Sending message {topic}: {json_message}")
         result, mid = self.client.publish(topic, payload=json_message)
         if result != mqtt.MQTT_ERR_SUCCESS:
-            _LOGGER.error(f"Error sending message {topic}. Data: {json_message}")
+            self.number_of_message_failures += 1
+            if self.number_of_message_failures > 5:
+                _LOGGER.error(f"Error sending message {topic}. Failed {self.number_of_message_failures} times. Data: {json_message}")
+        else:
+            self.number_of_message_failures = 0
         return mid
 
     def start_mqtt_client(self):
         """Start the MQTT client's event loop."""
         self.client.loop_start()
 
-    def reconnect(self):
+    async def reconnect(self):
         """Reconnect to the MQTT broker."""
-        self.init_mqtt_client()
+        await self.init_mqtt_client()
 
     def disconnect(self):
         """Disconnect from the MQTT broker."""
@@ -264,7 +274,18 @@ class MqttClient:
         self.stop_scheduler()
         _LOGGER.debug("Disconnected")
 
-    def init_mqtt_client(self):
+
+    def on_message_callback(self, client, userdata, message):
+        """Handle the received message in a separate task.
+
+        Args:
+            client: The MQTT client instance.
+            userdata: The user data.
+            msg: The received message.
+        """
+        self.hass.create_task(self.on_message(client, userdata, message))
+
+    async def init_mqtt_client(self):
         """Initialize the MQTT client."""
         _LOGGER.debug("Initializing MQTT client")
         if self.client:
@@ -274,7 +295,7 @@ class MqttClient:
                                     self.token_data['access_token'])
         self.client.tls_set()
         self.client.on_connect = self.on_connect
-        self.client.on_message = self.on_message
+        self.client.on_message = self.on_message_callback
         self.client.on_disconnect = self.on_disconnect
         self.client.enable_logger(logger=_LOGGER)
         self.client.reconnect_delay_set(min_delay=30, max_delay=300)
@@ -286,8 +307,8 @@ class MqttClient:
         """Authenticate the user with the provided credentials."""
         token_data, user = await auth(self.auth_username, self.auth_password)
         self.set_token_data(token_data)
-        self.set_user(user)
-        self.init_mqtt_client()
+        await self.set_user(user)
+        await self.init_mqtt_client()
 
     async def refresh_token(self):
         """Refresh the authentication token."""
@@ -296,50 +317,26 @@ class MqttClient:
         try:
             token_data = await refresh(self.token_data["refresh_token"])
             self.set_token_data(token_data)
-            self.reconnect()
+            await self.reconnect()
         except MqttClientAuthenticationError as e:
             _LOGGER.error("Could not refresh token: " + str(e))
             return
 
-    def set_installations(self, installations):
+    async def set_installations(self, installations):
         """Set the installations.
 
         Args:
             installations: The installations.
         """
         if len(installations) > 0 and "groups" in installations[0] and len(installations[0]["groups"]) > 0:
-            self.update_installations(installations)
+            await self.update_installations(installations)
             self.set_install_id()
 
-    def update_installations(self, installations):
+    async def update_installations(self, installations):
         """Write the installations to a file."""
 
-        stored_installations = read_from_json("installations_raw.json")
-
-        if stored_installations is not None and len(stored_installations) > 0:
-            merger = Merger(
-                [
-                    (list, ["override"]),
-                    (dict, ["merge"]),
-                    (set, ["union"])
-                ],
-                ["override"],
-                ["override"]
-            )
-
-            merged_installations = []
-            for installation in installations:
-                for stored_installation in stored_installations:
-                    if installation["unique"] == stored_installation["unique"]:
-                        merged_installations.append(merger.merge(stored_installation, installation))
-                        break
-
-        else:
-            merged_installations = installations
-
-        save_as_json(merged_installations, "installations_raw.json")
-
-        self.installations = parse_installations(merged_installations)
+        self.installations = parse_installations(installations, self.last_operating_mode)
+        await self.publish_updates()
 
     def set_token_data(self, token_data):
         """Set the authentication token data and start the refresh timer.
@@ -377,7 +374,7 @@ class MqttClient:
         self.transaction_id = self.user["transactionId"] if "transactionId" in self.user else None
         return self.transaction_id
 
-    def set_user(self, user):
+    async def set_user(self, user):
         """Set the user data.
 
         Args:
@@ -385,7 +382,10 @@ class MqttClient:
         """
         self.user = user
         if "installs" in user:
-            self.set_installations(user["installs"])
+            if len(user["installs"]) > 0 and "user" in user["installs"][0] and "heatcool_auto_01" in user["installs"][0]["user"]:
+                self.last_operating_mode = user["installs"][0]["user"]["heatcool_auto_01"]
+                _LOGGER.debug("Setting last operating mode to " + str(self.last_operating_mode))
+            await self.set_installations(user["installs"])
 
     def get_install_id(self):
         """Get the installation ID.
@@ -428,9 +428,7 @@ class MqttClient:
         if self.referentials is not None:
             return self.referentials
         else:
-            with open("./data/referentials.json") as referentials_file:
-                self.referentials = json.load(referentials_file)["referentials"]
-                return self.referentials
+            raise MqttClientError("No referentials found")
 
     def request_server_referentials(self):
         """Request the referentials from the server."""
@@ -444,7 +442,7 @@ class MqttClient:
         }
         self.send_message(ServerTopics.USER_REFERENTIAL.value, payload)
 
-    def update_channel(self, payload: dict):
+    async def update_channel(self, payload: dict):
         """Update the channel with the provided payload.
 
         Args:
@@ -475,10 +473,34 @@ class MqttClient:
                     if channel["id"] == channel_id:
                         channel["energy_level"] = mode_used
                         channel["target_temperature"] = setpoint_used
+                        await self.publish_updates()
                         return
 
 
         raise MqttClientError("No channel found for id " + channel_id)
+
+
+    async def publish_updates(self) -> None:
+        """Publish updates to all registered callbacks."""
+        for callback in self.callbacks:
+            callback()
+
+
+    def register_callback(self, callback: Callable[[], None]) -> None:
+        """Register callback, called when Roller changes state.
+
+        Args:
+            callback (Callable[[], None]): Callback to be called when Roller changes state.
+        """
+        self.callbacks.add(callback)
+
+    def remove_callback(self, callback: Callable[[], None]) -> None:
+        """Remove previously registered callback.
+
+        Args:
+            callback (Callable[[], None]): Callback to be removed.
+        """
+        self.callbacks.discard(callback)
 
     def run_scheduler(self):
         """Run the scheduler in a separate thread."""

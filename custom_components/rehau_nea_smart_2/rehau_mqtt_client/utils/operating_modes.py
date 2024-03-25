@@ -11,6 +11,9 @@ def parse_operating_mode(heat_cool_auto: dict):
     Returns:
         int: The corresponding OperationModes value representing the operating mode.
     """
+    if heat_cool_auto is None or not isinstance(heat_cool_auto, dict) or "heating" not in heat_cool_auto or "cooling" not in heat_cool_auto or "manual" not in heat_cool_auto:
+        return OperationModes.UNKNOWN.value
+
     if heat_cool_auto["heating"] and heat_cool_auto["cooling"]:
         return OperationModes.AUTO.value
     elif heat_cool_auto["cooling"]:

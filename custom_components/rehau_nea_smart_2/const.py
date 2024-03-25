@@ -34,6 +34,7 @@ PRESET_ENERGY_LEVELS_MAPPING_REVERSE.update(custom_mappings)
 
 
 PRESET_OPERATING_MODES_MAPPING = {
+    "unknown": OperationModes.UNKNOWN.value,
     "auto": OperationModes.AUTO.value,
     "heating": OperationModes.HEATING_ONLY.value,
     "cooling": OperationModes.COOLING_ONLY.value,
@@ -46,6 +47,7 @@ PRESET_OPERATING_MODES_MAPPING_REVERSE = {
 }
 
 PRESET_CLIMATE_MODES_MAPPING = {
+    OperationModes.UNKNOWN.value: HVACMode.OFF,
     OperationModes.AUTO.value: HVACMode.AUTO,
     OperationModes.HEATING_ONLY.value: HVACMode.HEAT,
     OperationModes.COOLING_ONLY.value: HVACMode.COOL,
@@ -56,5 +58,5 @@ PRESET_CLIMATE_MODES_MAPPING = {
 PRESET_CLIMATE_MODES_MAPPING_REVERSE = {
     v: k
     for k, v in PRESET_CLIMATE_MODES_MAPPING.items()
-    if k not in [OperationModes.HEATING_MANUAL, OperationModes.COOLING_MANUAL]
+    if k not in [OperationModes.HEATING_MANUAL, OperationModes.COOLING_MANUAL, OperationModes.UNKNOWN]
 }
