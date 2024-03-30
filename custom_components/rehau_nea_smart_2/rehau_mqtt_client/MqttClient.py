@@ -320,7 +320,7 @@ class MqttClient:
             await self.reconnect()
         except MqttClientAuthenticationError as e:
             _LOGGER.error("Could not refresh token: " + str(e))
-            return
+            await self.auth_user()
 
     async def set_installations(self, installations):
         """Set the installations.
