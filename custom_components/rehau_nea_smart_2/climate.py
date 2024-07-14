@@ -82,6 +82,7 @@ class IntegrationRehauNeaSmart2Climate(ClimateEntity, RestoreEntity):
             "heating_standby": channel.setpoints.heating.standby,
             "cooling_normal": channel.setpoints.cooling.normal,
             "cooling_reduced": channel.setpoints.cooling.reduced,
+            "current_humidity": channel.humidity
         }
 
         for attribute in attributes:
@@ -146,6 +147,7 @@ class RehauNeaSmart2RoomClimate(IntegrationRehauNeaSmart2Climate):
         self._attr_target_temperature = self.format_temperature(self._target_temp, True)
         self._attr_max_temp = self.format_temperature(self._max_temp)
         self._attr_min_temp = self.format_temperature(self._min_temp)
+        self._attr_current_humidity = self._current_humidity
 
     def format_temperature(self, temperature, round_half=False) -> float:
         """Format the temperature."""
@@ -177,6 +179,17 @@ class RehauNeaSmart2RoomClimate(IntegrationRehauNeaSmart2Climate):
             return self.format_temperature(channel.target_temperature, True)
 
         return self._attr_target_temperature
+
+    @property
+    def current_humidity(self) -> float | None:
+        """Return current humidity."""
+        _LOGGER.debug(f"Getting current humidity for zone {self._zone_number}")
+        zone = self._controller.get_zone(self._zone_number)
+        if zone is not None:
+            channel = zone.channels[0]
+            return channel.humidity
+
+        return self._attr_current_humidity
 
     @property
     def hvac_mode(self) -> str | None:

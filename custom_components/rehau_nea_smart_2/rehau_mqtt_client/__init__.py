@@ -20,4 +20,5 @@ from .exceptions import (
 
 def __init__():
     """Initialize the rehau_nea_smart_2 component mqttclient."""
+    _LOGGER.debug("Initializing NEA SMART 2 HACS INTEGRATION")
     pass

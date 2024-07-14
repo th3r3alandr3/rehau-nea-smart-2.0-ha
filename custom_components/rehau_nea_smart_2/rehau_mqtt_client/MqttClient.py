@@ -334,7 +334,6 @@ class MqttClient:
 
     async def update_installations(self, installations):
         """Write the installations to a file."""
-
         self.installations = parse_installations(installations, self.last_operating_mode)
         await self.publish_updates()
 

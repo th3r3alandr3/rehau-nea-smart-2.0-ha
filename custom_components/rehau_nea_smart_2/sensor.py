@@ -38,6 +38,16 @@ async def async_setup_entry(hass, entry, async_add_devices):
 
     for entity_description in ENTITY_DESCRIPTIONS:
         for installation in installations:
+            devices.append(
+                RehauNeasmart2OutdoorTemperatureSensor(
+                    controller, installation, "outside_temp", "Outside Temperature", entity_description
+                )
+            )
+            devices.append(
+                RehauNeasmart2OutdoorTemperatureSensor(
+                    controller, installation, "outsideTempFiltered", "Filtered Outside Temperature", entity_description
+                )
+            )
             for group in installation.groups:
                 for zone in group.zones:
                     devices.append(
@@ -118,3 +128,62 @@ class RehauNeasmart2TemperatureSensor(RehauNeasmartGenericSensor):
     def state(self):
         """Return the state of the sensor."""
         return self._controller.get_temperature(self._zone_number)
+
+class RehauNeasmart2OutdoorTemperatureSensor(SensorEntity, RestoreEntity):
+    """Temperature sensor class for outdoor Rehau Neasmart."""
+
+    device_class = TEMPERATURE
+    _attr_native_unit_of_measurement = UnitOfTemperature.CELSIUS
+
+    _attr_has_entity_name = True
+    should_poll = False
+
+    def __init__(self, controller: Controller, installation: Installation, propertyname: str, name: str, entity_description: SensorEntityDescription):
+        """Initialize the generic sensor class."""
+        self._installation = installation
+        self._controller = controller
+        self._available = True
+        self._name = f"{name}"
+        self._propertyname = propertyname
+        self._installation_unique = installation.unique
+        self._state = round((getattr(self._installation, propertyname) / 10 - 32) / 1.8, 1)
+        self._unique_name = name.lower().replace(" ", "_")
+        self._attr_unique_id = f"{self._installation_unique}_{self._unique_name}"
+        self._attr_name = self._name
+        self.entity_description = entity_description
+
+    async def async_added_to_hass(self) -> None:
+        """Run when this Entity has been added to HA."""
+        self._controller.register_callback(self.async_write_ha_state)
+
+    async def async_will_remove_from_hass(self):
+        """Run when this Entity will be removed from HA."""
+        self._controller.remove_callback(self.async_write_ha_state)
+
+    @property
+    def device_info(self):
+        """Return device information for the sensor."""
+        return DeviceInfo(
+            identifiers={(DOMAIN, self._controller.id)},
+            name=self._controller.name,
+            manufacturer=self._controller.manufacturer,
+            model=self._controller.model,
+        )
+
+    @property
+    def available(self) -> bool:
+        """Return True if the climate entity is available."""
+        return self._controller.is_connected(self._installation_unique)
+
+    @property
+    def native_value(self) -> float | None:
+        """Return the native value of the sensor."""
+        installation = self._controller.get_installation_by_unique(self._installation_unique)
+        return round((installation.get(self._propertyname) / 10 - 32) / 1.8, 1)
+
+    @property
+    def state(self):
+        """Return the state of the sensor."""
+        installation = self._controller.get_installation_by_unique(self._installation_unique)
+        return round((installation.get(self._propertyname) / 10 - 32) / 1.8, 1)
+

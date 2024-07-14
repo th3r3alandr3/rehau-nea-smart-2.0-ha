@@ -24,6 +24,7 @@ The Rehua Nea Smart 2.0 Home Assistant Integration empowers you to control and m
 
 ### Prerequisites
 - Ensure that you have already set up a Rehua Nea Smart 2.0 account and successfully linked your device to your account.
+- Remember to check "Always use this installation on startup" in your App or the installation will not be found.
 
 ### HACS (Home Assistant Community Store)
 [![Open your Home Assistant instance and open a repository inside the Home Assistant Community Store.](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?repository=rehau-nea-smart-2.0-ha&owner=th3r3alandr3)

@@ -23,6 +23,8 @@ def parse_installations(installations, last_operation_mode) -> list[Installation
             "id": installation["_id"],
             "connected": is_installation_connected(installation),
             "unique": installation["unique"],
+            "outside_temp": installation["outside_temp"],
+            "outsideTempFiltered": installation["outsideTempFiltered"],
             "hash": installation["hash"] if "hash" in installation else None,
             "global_energy_level": get_global_energy_level(installation).value,
             "operating_mode": parse_operating_mode(
@@ -40,6 +42,7 @@ def parse_installations(installations, last_operation_mode) -> list[Installation
                             "channels": [
                                 {
                                     "id": channel["_id"],
+                                    "humidity": channel["humidity"],
                                     "target_temperature": channel["setpoint_used"],
                                     "current_temperature": channel["temp_zone"],
                                     "energy_level": channel["mode_permanent"],
