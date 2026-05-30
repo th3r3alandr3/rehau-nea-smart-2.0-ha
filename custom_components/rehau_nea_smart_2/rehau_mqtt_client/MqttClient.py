@@ -10,7 +10,7 @@ import time
 import re
 
 from .utils import generate_uuid, ServerTopics, ClientTopics
-from .handlers import handle_message, auth, refresh, parse_installations, read_user_state
+from .handlers import handle_message, fetch_user_data, refresh, parse_installations, read_user_state
 from .exceptions import (
     MqttClientAuthenticationError,
     MqttClientCommunicationError,
@@ -26,20 +26,28 @@ class MqttClient:
 
     MAX_CONNECT_RETRIES = 5
 
-    def __init__(self, hass: HomeAssistant, username, password):
+    def __init__(self, hass: HomeAssistant, username, token_data=None,
+                 on_token_update=None, on_auth_failed=None):
         """Initialize the MQTT client.
 
         Args:
             hass: The Home Assistant instance.
-            username: The MQTT username.
-            password: The MQTT password.
+            username: The account e-mail.
+            token_data: Stored OAuth token data (incl. refresh_token) from a
+                previous interactive login. Used to obtain a fresh access token
+                on startup so MFA is not needed again.
+            on_token_update: Optional callback invoked with the latest
+                token_data whenever it is refreshed, so it can be persisted.
+            on_auth_failed: Optional callback invoked when the refresh token is
+                no longer valid and interactive re-authentication is required.
         """
         self.hass = hass
         self.username = "app"
         self.password = "appuserplatform"
         self.auth_username = username
-        self.auth_password = password
-        self.token_data = None
+        self.token_data = token_data
+        self.on_token_update = on_token_update
+        self.on_auth_failed = on_auth_failed
         self.user = None
         self.installations = None
         self.authenticated = False
@@ -62,28 +70,6 @@ class MqttClient:
         self.number_of_retries = 0
         self.number_of_message_failures = 0
         self.callbacks = set()
-
-    @staticmethod
-    async def check_credentials(email, password):
-        """Check if the provided credentials are valid.
-
-        Args:
-            email: The user's email.
-            password: The user's password.
-            hass: The Home Assistant instance.
-
-        Returns:
-            bool: True if the credentials are valid, False otherwise.
-
-        Raises:
-            MqttClientAuthenticationError: If the credentials are invalid.
-        """
-        valid = await auth(email, password, True)
-        _LOGGER.debug("Credentials valid: " + str(valid))
-        if valid:
-            return True
-
-        raise MqttClientAuthenticationError("Invalid credentials")
 
     def is_authenticated(self):
         """Check if the MQTT client is authenticated.
@@ -303,12 +289,43 @@ class MqttClient:
         self.start_scheduler()
         self.start_mqtt_client()
 
-    async def auth_user(self):
-        """Authenticate the user with the provided credentials."""
-        token_data, user = await auth(self.auth_username, self.auth_password)
-        self.set_token_data(token_data)
+    async def authenticate(self):
+        """Authenticate using the stored refresh token and connect.
+
+        The interactive (MFA) login is only ever performed in the config flow.
+        On startup we use the stored refresh token to obtain a fresh access
+        token, fetch the user data, and connect to the MQTT broker.
+
+        Raises:
+            MqttClientAuthenticationError: If no usable token is stored or the
+                refresh token has been revoked - the caller should trigger
+                interactive re-authentication.
+        """
+        if not self.token_data or "refresh_token" not in self.token_data:
+            raise MqttClientAuthenticationError(
+                "No stored credentials - re-authentication required"
+            )
+
+        token_data = await refresh(self.token_data["refresh_token"])
+        self._merge_token_data(token_data)
+        user = await fetch_user_data(self.auth_username, self.token_data["access_token"])
         await self.set_user(user)
         await self.init_mqtt_client()
+
+    def _merge_token_data(self, token_data):
+        """Merge a refresh response into the stored token data and persist it.
+
+        A refresh response may omit the refresh_token (non-rolling); keep the
+        previous one in that case.
+        """
+        merged = dict(self.token_data or {})
+        merged.update(token_data)
+        self.set_token_data(merged)
+        if self.on_token_update:
+            try:
+                self.on_token_update(merged)
+            except Exception as err:  # persistence is best-effort
+                _LOGGER.warning("Could not persist refreshed token: %s", err)
 
     async def refresh_token(self):
         """Refresh the authentication token."""
@@ -316,11 +333,15 @@ class MqttClient:
         _LOGGER.debug("Refreshing token")
         try:
             token_data = await refresh(self.token_data["refresh_token"])
-            self.set_token_data(token_data)
+            self._merge_token_data(token_data)
             await self.reconnect()
         except MqttClientAuthenticationError as e:
-            _LOGGER.error("Could not refresh token: " + str(e))
-            await self.auth_user()
+            _LOGGER.error("Could not refresh token: %s", e)
+            _LOGGER.error(
+                "Refresh token is no longer valid - re-authentication required"
+            )
+            if self.on_auth_failed:
+                self.on_auth_failed()
 
     async def set_installations(self, installations):
         """Set the installations.

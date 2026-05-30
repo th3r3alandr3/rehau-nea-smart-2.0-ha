@@ -8,12 +8,29 @@
           "email": "E-Mail",
           "password": "Passwort"
         }
+      },
+      "mfa": {
+        "description": "REHAU hat einen Bestätigungscode an Ihre E-Mail gesendet. Geben Sie den 6-stelligen Code ein.",
+        "data": {
+          "code": "Bestätigungscode"
+        }
+      },
+      "reauth_confirm": {
+        "description": "Ihre REHAU-Anmeldung für {email} ist abgelaufen. Geben Sie Ihr Passwort erneut ein (ein neuer Bestätigungscode wird per E-Mail gesendet).",
+        "data": {
+          "password": "Passwort"
+        }
       }
     },
     "error": {
       "auth": "Benutzername/Passwort ist falsch.",
+      "invalid_code": "Der Bestätigungscode wurde abgelehnt. Bitte erneut versuchen.",
       "connection": "Verbindung zum Server konnte nicht hergestellt werden.",
       "unknown": "Unbekannter Fehler ist aufgetreten."
+    },
+    "abort": {
+      "already_configured": "Dieses REHAU-Konto ist bereits eingerichtet.",
+      "reauth_successful": "Die erneute Authentifizierung war erfolgreich."
     }
   },
   "entity": {

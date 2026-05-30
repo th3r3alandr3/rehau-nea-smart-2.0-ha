@@ -3,17 +3,34 @@
     "flow_title": "Rehau Nea Smart 2",
     "step": {
       "user": {
-        "description": "Plesae enter your email and password.",
+        "description": "Please enter your REHAU account email and password.",
         "data": {
           "email": "Email",
+          "password": "Password"
+        }
+      },
+      "mfa": {
+        "description": "REHAU has emailed a verification code to your account. Enter the 6-digit code below.",
+        "data": {
+          "code": "Verification code"
+        }
+      },
+      "reauth_confirm": {
+        "description": "Your REHAU login for {email} has expired. Enter your password to sign in again (a new verification code will be emailed to you).",
+        "data": {
           "password": "Password"
         }
       }
     },
     "error": {
-      "auth": "Username/Password is wrong.",
+      "auth": "Email/Password is wrong.",
+      "invalid_code": "The verification code was rejected. Check the code and try again.",
       "connection": "Unable to connect to the server.",
       "unknown": "Unknown error occurred."
+    },
+    "abort": {
+      "already_configured": "This REHAU account is already configured.",
+      "reauth_successful": "Re-authentication was successful."
     }
   },
   "entity": {

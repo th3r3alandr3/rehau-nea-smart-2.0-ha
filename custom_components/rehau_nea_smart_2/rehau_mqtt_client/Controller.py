@@ -11,26 +11,37 @@ from homeassistant.core import HomeAssistant
 class Controller:
     """Controller class for the REHAU NEA SMART 2 integration."""
 
-    def __init__(self, hass: HomeAssistant, email: str, password: str):
-        """Initializ the Controller object.
+    def __init__(self, hass: HomeAssistant, email: str, token_data=None,
+                 on_token_update=None, on_auth_failed=None):
+        """Initialize the Controller object.
 
         Args:
-            email (str): The email address for authentication.
-            password (str): The password for authentication.
+            email (str): The account e-mail.
+            token_data: Stored OAuth token data from the interactive login.
+            on_token_update: Callback to persist refreshed token data.
+            on_auth_failed: Callback invoked when interactive re-auth is needed.
         """
         self.id = "REHAU NEA SMART 2.0"
         self.name = "REHAU NEA SMART 2.0 Climate Control System"
         self.model = "Neasmart 2.0 Base Station"
         self.manufacturer = "Rehau"
         self.auth_username = email
-        self.auth_password = password
+        self.token_data = token_data
+        self.on_token_update = on_token_update
+        self.on_auth_failed = on_auth_failed
         self.mqtt_client = None
         self.hass = hass
 
     async def connect(self):
-        """Connect to the MQTT broker and authenticates the user."""
-        self.mqtt_client = MqttClient(hass=self.hass, username=self.auth_username, password=self.auth_password)
-        await self.mqtt_client.auth_user()
+        """Connect to the MQTT broker using the stored token."""
+        self.mqtt_client = MqttClient(
+            hass=self.hass,
+            username=self.auth_username,
+            token_data=self.token_data,
+            on_token_update=self.on_token_update,
+            on_auth_failed=self.on_auth_failed,
+        )
+        await self.mqtt_client.authenticate()
 
     async def disconnect(self):
         """Disconnect from the MQTT broker."""

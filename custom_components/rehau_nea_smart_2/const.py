@@ -16,6 +16,10 @@ DOMAIN = "rehau_nea_smart_2"
 VERSION = "0.1.0"
 ATTRIBUTION = "Data provided by REHAU Nea Smart 2.0 Mqtt API"
 
+# Key under which the OAuth token data (incl. refresh_token) is stored in the
+# config entry after the interactive (MFA) login.
+CONF_TOKEN_DATA = "token_data"
+
 PRESET_ENERGY_LEVELS_MAPPING = {
     "normal": EnergyLevels.PRESENT_MODE.value,
     "reduced": EnergyLevels.ABSENT_MODE.value,
